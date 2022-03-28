@@ -46,3 +46,11 @@ myMvd <- mvdc(copula=myCop, margins=c("gamma", "beta", "t"),
 Z2 <- rMvdc(2000, myMvd)
 colnames(Z2) <- c("x1", "x2", "x3")
 pairs.panels(Z2)
+
+library(copula)
+library("scatterplot3d")
+?claytonCopula
+
+
+clayton.cop <- claytonCopula(2, dim = 3)
+scatterplot3d(rCopula(1000, clayton.cop))
