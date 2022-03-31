@@ -48,6 +48,8 @@
 
 # Copula fitting should be added here
 
+
+
 mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL){
   
   # include some checks for inputs
@@ -197,7 +199,74 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       }
     }
     
-    # end of GCA code   
+    # end of GCA code 
+  }
+    
+    # Archimedean copula code
+    if(any(match(c("Clayton", "Frank", "Gumbel"), method, nomatch = 0) != 0 ) ){
+      require(MASS)
+      
+      # if no EMOS_sample to base Clayton on is given, recursively call 'mvpp' to generate such a sample
+      if(any(!is.null(c(EMOS_sample, variant)))){
+        message("'EMOS_sample' and 'variant' input have no effect for Archimedean copulas")
+      } 
+      
+      # concatenate obs_init and obs arrays to determine covariance matrix for Gaussian copulas
+      obs_all <- rbind(obs_init, obs)
+      
+      for(nn in 1:n){
+        # select forecast cases to estimatate covariance matrix
+        #   ... theoretically, covariance matrix could also be estimated from past ensemble forecasts
+        #   ... to speed up computation, it would also be possible to only use obs_init
+        obs_train <- obs_all[1:(dim(obs_init)[1]+nn-1), ]
+        
+        # The input for the copulas are the CDF values of the margins
+        obs_train_CDF <- c()
+        for (i in 1:dim(obs_train)[2]) {
+          obs_train_CDF <- cbind(obs_train_CDF, pnorm(obs_train[,i], mean = 0, sd = 1))
+        }
+        
+        # Estimate the parameter and copula
+        if (method == "Clayton") {
+          fitcop <- fitCopula(claytonCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1)
+        }
+        else if (method == "Frank") {
+          fitcop <- fitCopula(frankCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1)
+        }
+        else if (method == "Gumbel") {
+          fitcop <- fitCopula(gumbelCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1)
+        } else {
+          stop("Incorrect copula")
+        }
+        
+        cop <- fitcop@copula
+        
+        # draw random sample from multivariate normal distribution with this estimated copula
+        paramMargins <- list()
+        
+        for (i in 1:d){
+          paramMargins[[i]] <- list(mean = 0, sd = 1)
+        }
+        
+        # Generate observations with standard normal marginals
+        mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
+                               paramMargins=paramMargins)
+        
+        # Dependence structure by Copula
+        mvsample <- rMvdc(m, mvDistribution)
+        
+        
+        for(dd in 1:d){
+          
+          # Translate CDF values back to forecasts
+          mvppout[nn, , dd] <- mvsample[,dd]
+        }
+        
+      }
+      
+      # end of Archimedean Copula code
+    
+    
   }
   
   # dECC

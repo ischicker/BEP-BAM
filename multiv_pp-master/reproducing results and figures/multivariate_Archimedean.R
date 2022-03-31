@@ -9,8 +9,6 @@ load("../Data/TestStatistic/testStatistic_Archimedean_1.Rdata")
 
 df <- dfmc; rm(dfmc)
 
-
-names(df)
 df1 <- subset(df)
 
 
@@ -38,15 +36,23 @@ df1 <- subset(df1_save, model != "ens")
 # also drop EMOS.Q
 df2 <- subset(df1, model != "emos.q")
 
-mypal <- colorspace::rainbow_hcl(5)
+mypal <- colorspace::rainbow_hcl(8)
 mypal_use <- c("decc.q" = mypal[1],
                "ecc.q" = mypal[2],
                "ecc.s" = mypal[3],
                "gca" = mypal[4],
-               "ssh" = mypal[5])
+               "ssh" = mypal[5],
+               "Clayton" = mypal[6],
+               "Frank" = mypal[7],
+               "Gumbel" = mypal[8])
 
-df2$model <- factor(df2$model, levels = c("decc.q", "ecc.q", "ecc.s", "gca", "ssh"))
-model_vec <- c("dECC", "ECC-Q", "ECC-S", "GCA", "SSh")
+df2$model <- factor(df2$model, levels = c("decc.q", "ecc.q", "ecc.s", "gca", "ssh", "clayton", "frank", "gumbel"))
+model_vec <- c("dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel")
+
+ylimitFunc <- function(val1, val2) {
+  return(1.5 * max(abs(val1), abs(val2)))
+}
+
 
 # Plot the scores for copula
 plotScores <- function(dfplot, cop, this_score){
@@ -54,18 +60,25 @@ plotScores <- function(dfplot, cop, this_score){
 
   dfplotCop <- subset(dfplot, copula == cop)
   
+  alpha <- 0.25
+  
+  quants <- unname(quantile(dfplot$value, c(0.1, 0.9)))
+  
+  ylimits <- c(1.5 * min(quants[1], qnorm(alpha)), 1.5 * max(quants[2], qnorm(1 - alpha)))
+  
 
   
-  p1 <- ggplot(dfplotCop, aes(model, value, colour = model)) + 
-    geom_rect(data = subset(dfplotCop, equalThetas == 1), color = "black", size = 2, fill = NA, xmin = -Inf,xmax = Inf, ymin = -Inf,ymax = Inf) 
-  p1 <- p1 + geom_rect(mapping=aes(xmin=-Inf, xmax=Inf, ymin=qnorm(0.025), ymax=qnorm(0.975)), fill = "gray75", color="gray75", alpha=0.25) 
+  p1 <- ggplot(dfplotCop, aes(model, value, colour = model)) +
+    geom_rect(data = subset(dfplotCop, equalThetas == 1), color = "black", size = 2, fill = NA, xmin = -Inf,xmax = Inf, ymin = -10,ymax = 10)
+  p1 <- p1 + ylim(ylimits[1], ylimits[2])
+  p1 <- p1 + geom_rect(mapping=aes(xmin=-Inf, xmax=Inf, ymin=qnorm(alpha), ymax=qnorm(1-alpha)), fill = "gray75", color="gray75", alpha=alpha)
   p1 <- p1 + geom_boxplot(outlier.shape = NA) + geom_hline(yintercept = 0, linetype = "dashed", color = "gray25")
-  p1 <- p1 + facet_grid(rows = vars(theta), cols = vars(theta0), 
-                        labeller = label_bquote(rows = theta==.(theta), 
+  p1 <- p1 + facet_grid(rows = vars(theta), cols = vars(theta0),
+                        labeller = label_bquote(rows = theta==.(theta),
                                                 cols = theta[0]==.(theta0)))
   
   scval <- strsplit(this_score, split = "_")[[1]][1]
-  if(scval == "es"){
+  if(scval == "es"){ 
     title <- paste("Energy Score for",cop,"copula")
     p1 <- p1 + ggtitle(title)
   } 

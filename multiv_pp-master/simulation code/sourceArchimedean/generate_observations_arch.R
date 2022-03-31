@@ -92,7 +92,7 @@ generate_obs <- function(model, nout, ninit, d, ...){
   return(list("obs_init" = obs_init, "obs" = obs))
 }
 
-?gumbelCopula
+
 
 example_plot <- function(theta0, copula) {
   library("car")

@@ -44,9 +44,9 @@ Rout_dir <- "../Data/Rout/Archimedean" # directory to save Rout files to
 
 
 # Simulation parameters
-evalDays <- 100
-trainingDays <- 50
-ensembleMembers <- 50
+evalDays <- 2
+trainingDays <- 5
+ensembleMembers <- 3
 
 # Model selection. 
 # ObservationsModel denotes the model that is used to generate the observations
@@ -98,11 +98,11 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
     # postprocess ensemble forecasts
     pp_out <- postproc(fcmodel = fcmodel, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init, 
                        obs = obs$obs, obs_init = obs$obs_init, 
-                       train = "init", trainlength = NULL, emos_plus = FALSE)
+                       train = "init", trainlength = NULL, emos_plus = TRUE)
     
     # if there are NaN's in pp output, generate new sets of obs and fc, and re-run pp code
     # only happens very rarely for extreme parameter combinations
-    if(anyNA(pp_out)){
+    while(anyNA(pp_out)){
       obs <- generate_obs(model = obsmodel, nout = nout, ninit = ninit, d = d, ...)
       fc <- generate_ensfc(model = fcmodel, nout = nout, ninit = ninit, nmembers = nmembers, d = d, ...)
       pp_out <- postproc(fcmodel = fcmodel, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init, 
@@ -130,6 +130,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
     if(compute_crps){
       crps_list$emos.q[rr, , ] <- crps_wrapper(emos.q, obs$obs)
     }
+    
     tmp <- eval_all_mult(mvpp_out = emos.q, obs = obs$obs)
     es_list$emos.q[rr, ] <- tmp$es 
     vs1_list$emos.q[rr, ] <- tmp$vs1
@@ -246,6 +247,52 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
     vs0_list$gca[rr, ] <- apply(vs0_list_tmp, 1, mean)
     vs0w_list$gca[rr, ] <- apply(vs0w_list_tmp, 1, mean)
     
+    
+    # Archimedean copulas -> involves randomness -> repeat rand_rep times
+    for (method in c("Clayton","Frank", "Gumbel")) {
+      es_list_tmp <- vs1_list_tmp <- vs1w_list_tmp <- 
+        vs0_list_tmp <- vs0w_list_tmp <- matrix(NA, nrow = nout, ncol = rand_rep)
+      crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
+      for(RR in 1:rand_rep){
+        mvd <- mvpp(method = method, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
+                    obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out) 
+        
+        if(compute_crps){
+          crps_list_tmp[,,RR] <- crps_wrapper(mvd, obs$obs)
+        }
+        tmp <- eval_all_mult(mvpp_out = mvd, obs = obs$obs)
+        es_list_tmp[,RR] <- tmp$es
+        vs1_list_tmp[,RR] <- tmp$vs1
+        vs1w_list_tmp[,RR] <- tmp$vs1w
+        vs0_list_tmp[,RR] <- tmp$vs0
+        vs0w_list_tmp[,RR] <- tmp$vs0w
+      }
+      
+      if (method == "Clayton") {
+        crps_list$clayton[rr,,] <- apply(crps_list_tmp, c(1,2), mean)
+        es_list$clayton[rr, ] <- apply(es_list_tmp, 1, mean)
+        vs1_list$clayton[rr, ] <- apply(vs1_list_tmp, 1, mean)
+        vs1w_list$clayton[rr, ] <- apply(vs1w_list_tmp, 1, mean)
+        vs0_list$clayton[rr, ] <- apply(vs0_list_tmp, 1, mean)
+        vs0w_list$clayton[rr, ] <- apply(vs0w_list_tmp, 1, mean)
+        print("DONE")
+      } else if (method == "Frank") {
+        crps_list$frank[rr,,] <- apply(crps_list_tmp, c(1,2), mean)
+        es_list$frank[rr, ] <- apply(es_list_tmp, 1, mean)
+        vs1_list$frank[rr, ] <- apply(vs1_list_tmp, 1, mean)
+        vs1w_list$frank[rr, ] <- apply(vs1w_list_tmp, 1, mean)
+        vs0_list$frank[rr, ] <- apply(vs0_list_tmp, 1, mean)
+        vs0w_list$frank[rr, ] <- apply(vs0w_list_tmp, 1, mean)
+      } else if (method == "Gumbel") {
+        crps_list$gumbel[rr,,] <- apply(crps_list_tmp, c(1,2), mean)
+        es_list$gumbel[rr, ] <- apply(es_list_tmp, 1, mean)
+        vs1_list$gumbel[rr, ] <- apply(vs1_list_tmp, 1, mean)
+        vs1w_list$gumbel[rr, ] <- apply(vs1w_list_tmp, 1, mean)
+        vs0_list$gumbel[rr, ] <- apply(vs0_list_tmp, 1, mean)
+        vs0w_list$gumbel[rr, ] <- apply(vs0w_list_tmp, 1, mean)
+      } 
+    }
+    
     # end loop over Monte Carlo repetitions  
   }
   
@@ -274,6 +321,7 @@ run_wrapper <- function(runID){
 
 # Run the simulation for all parameter coefficients with a unique ID
 for (ID in 1:dim(input_par)[1]) {
+  closeAllConnections()
   print(ID)
   run_wrapper(runID = ID)
 }
