@@ -32,10 +32,10 @@ input_par <- expand.grid(input_theta0, input_theta, input_copula, input_d)
 names(input_par) <- c("theta0", "theta", "copula",  "d")
 
 # Number of Monte Carlo repetitions
-MC_reps <- 10
+MC_reps <- 100
 
 # Parameter that influences reliability of methods such as Ssh and ECC.S
-randomRepetitions <- 5
+randomRepetitions <- 20
 
 
 # Save data
@@ -44,15 +44,22 @@ Rout_dir <- "../Data/Rout/Archimedean" # directory to save Rout files to
 
 
 # Simulation parameters
-evalDays <- 2
-trainingDays <- 5
-ensembleMembers <- 3
+evalDays <- 150
+trainingDays <- 50
+ensembleMembers <- 50
 
 # Model selection. 
 # ObservationsModel denotes the model that is used to generate the observations
 # ForecastModel denotes the model that is used to generate the forecasts
-observationsModel <- 1
-forecastModel <- 1
+
+
+# Model 1 : Standard Gaussian Marginals
+modelSetting <- 1
+
+observationsModel <- modelSetting
+forecastModel <- modelSetting
+
+# Model 2 : 
 
 
 
@@ -304,7 +311,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
 
 
 run_wrapper <- function(runID){
-  sink(file = paste0(Rout_dir, "setting1_", runID, ".Rout"))
+  sink(file = paste0(Rout_dir, "_model_",modelSetting,"_ID_", runID, ".Rout"))
   par_values <- as.numeric(input_par[ID, ])
   res <- run_setting1(obsmodel = observationsModel, fcmodel = forecastModel, nout = evalDays, ninit = trainingDays, nmembers = ensembleMembers, 
                   MCrep = MC_reps, rand_rep = randomRepetitions, 
@@ -313,7 +320,7 @@ run_wrapper <- function(runID){
                   theta = input_par$theta[runID], 
                   copula = input_par$copula[runID],
                   d = input_par$d[runID])
-  savename <- paste0(Rdata_dir, "res_setting_arch", runID, ".Rdata")
+  savename <- paste0(Rdata_dir, "_model_",modelSetting,"_ID_", runID, ".Rdata")
   save(res, input_par, file = savename)
   sink()
 }

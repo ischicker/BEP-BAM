@@ -31,13 +31,17 @@ MC_reps <- 10
 # Parameter that influences reliability of methods such as Ssh and ECC.S
 randomRepetitions <- 5
 
+# Model 1 : Standard Gaussian Marginals
 
+modelSetting <- 1
+
+fName <- paste0("Archimedean_model_",modelSetting,"_ID_")
 
 df_raw <- data.frame(input_par)
 df_raw$simID <- 1:nrow(df_raw)
 
 flist <- list.files("../Data/Rdata/")
-existing <- as.numeric(sapply(flist, FUN = function(x) as.numeric(strsplit(strsplit(x, "Archimedeanres_setting_arch")[[1]][2], ".Rdata"))))
+existing <- as.numeric(sapply(flist, FUN = function(x) as.numeric(strsplit(strsplit(x, fName)[[1]][2], ".Rdata"))))
 
 df <- df_raw[which(is.element(df_raw$simID, existing)),] 
 
@@ -116,5 +120,6 @@ for(filename in flist){
   
 }
 
-save(dfmc, file = "../Data/TestStatistic/testStatistic_Archimedean_1.Rdata")
+
+save(dfmc, file = paste0("../Data/TestStatistic/TestStatistic_Archimedean_model_", modelSetting, ".Rdata"))
 

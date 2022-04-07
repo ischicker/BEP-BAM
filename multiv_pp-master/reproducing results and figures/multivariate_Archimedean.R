@@ -5,7 +5,13 @@ library(gridExtra)
 
 setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
 
-load("../Data/TestStatistic/testStatistic_Archimedean_1.Rdata")
+# Model 1 : Standard Gaussian Marginals
+
+modelSetting <- 1
+
+
+
+load(paste0("../Data/TestStatistic/TestStatistic_Archimedean_model_", modelSetting, ".Rdata"))
 
 df <- dfmc; rm(dfmc)
 
@@ -27,7 +33,9 @@ df1$value <- (-1)*df1$value
 df0 <- df1
 
 input_scores <- unique(df1$score)
-plot_folder <- "../Data/Plots/"
+plot_folder <- paste0("../Data/Plots/Arch_model_",modelSetting,"/")
+dir.create(file.path(plot_folder), showWarnings = FALSE)
+
 
 # drop model == "ens"
 df1_save <- df1 
@@ -42,9 +50,9 @@ mypal_use <- c("decc.q" = mypal[1],
                "ecc.s" = mypal[3],
                "gca" = mypal[4],
                "ssh" = mypal[5],
-               "Clayton" = mypal[6],
-               "Frank" = mypal[7],
-               "Gumbel" = mypal[8])
+               "clayton" = mypal[6],
+               "frank" = mypal[7],
+               "gumbel" = mypal[8])
 
 df2$model <- factor(df2$model, levels = c("decc.q", "ecc.q", "ecc.s", "gca", "ssh", "clayton", "frank", "gumbel"))
 model_vec <- c("dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel")
@@ -106,13 +114,30 @@ p1saveFrank <- plotScores(dfplot, "Frank", this_score)
 p1saveClayton <- plotScores(dfplot, "Clayton", this_score)
 p1saveGumbel <- plotScores(dfplot, "Gumbel", this_score)
 
+# Save the plots individually
+plotWidth <- 1000
+plotHeight <- 600
+plotPointSize <- 11
+
+png(paste0(plot_folder, "Arch_ES_Clayton_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
+p1saveClayton
+dev.off()
+
+png(paste0(plot_folder, "Arch_ES_Frank_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
+p1saveFrank
+dev.off()
+
+png(paste0(plot_folder, "Arch_ES_Gumbel_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
+p1saveGumbel
+dev.off()
+
 
 ### Join the plots
 
 library(gridExtra)
 
-pdf(paste0(plot_folder, "Arch_ES.pdf"), width = 15, height = 24, pointsize = 11)
-png(paste0(plot_folder, "Arch_ES.png"), width = 1000, height = 2000, pointsize = 11)
+pdf(paste0(plot_folder, "Arch_ES_Combined_model_",modelSetting,".pdf"), width = 15, height = 24, pointsize = 11)
+png(paste0(plot_folder, "Arch_ES_Combined_model_",modelSetting,".png"), width = 1000, height = 2000, pointsize = 11)
 grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1)
 dev.off()
 
@@ -128,12 +153,25 @@ p1saveFrank <- plotScores(dfplot, "Frank", this_score)
 p1saveClayton <- plotScores(dfplot, "Clayton", this_score)
 p1saveGumbel <- plotScores(dfplot, "Gumbel", this_score)
 
+# Save the individual plots
+png(paste0(plot_folder, "Arch_VS_Clayton_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
+p1saveClayton
+dev.off()
+
+png(paste0(plot_folder, "Arch_VS_Frank_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
+p1saveFrank
+dev.off()
+
+png(paste0(plot_folder, "Arch_VS_Gumbel_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
+p1saveGumbel
+dev.off()
+
 
 ### Join the plots
 
 library(gridExtra)
 
-pdf(paste0(plot_folder, "Arch_VS.pdf"), width = 15, height = 24, pointsize = 11)
-png(paste0(plot_folder, "Arch_VS.png"), width = 1000, height = 2000, pointsize = 11)
+pdf(paste0(plot_folder, "Arch_VS_Combined_model_",modelSetting,".pdf"), width = 15, height = 24, pointsize = 11)
+png(paste0(plot_folder, "Arch_VS_Combined_model_",modelSetting,".png"), width = 1000, height = 2000, pointsize = 11)
 grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1)
 dev.off()
