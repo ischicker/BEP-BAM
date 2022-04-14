@@ -46,7 +46,6 @@ postproc <- function(fcmodel, ensfc, ensfc_init, obs, obs_init, train, trainleng
       
       m <- cbind(1, ens_mean) %*% par[1:2]
       s <- sqrt(cbind(1, ens_var) %*% par[3:4])
-      print(s)
       return(sum(crps_norm(y = obs_train, location = m, scale = s)))
     }
     

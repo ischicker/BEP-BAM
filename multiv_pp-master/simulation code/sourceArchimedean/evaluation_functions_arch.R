@@ -82,6 +82,7 @@ crps_wrapper <- function(mvpp_out, obs){
   n <- dim(mvpp_out)[1]
   d <- dim(mvpp_out)[3]
   out <- matrix(NA, nrow = n, ncol = d)
+
   for(nn in 1:n){
     for(dd in 1:d){
       out[nn, dd] <- crps_sample(y = obs[nn,dd], dat = mvpp_out[nn, , dd])

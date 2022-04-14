@@ -26,16 +26,17 @@ input_par <- expand.grid(input_theta0, input_theta, input_copula, input_d)
 names(input_par) <- c("theta0", "theta", "copula",  "d")
 
 # Number of Monte Carlo repetitions
-MC_reps <- 10
+MC_reps <- 100
 
-# Parameter that influences reliability of methods such as Ssh and ECC.S
-randomRepetitions <- 5
+# Setting parameter for different runs
+setting <- 2
 
 # Model 1 : Standard Gaussian Marginals
 
 modelSetting <- 1
 
-fName <- paste0("Archimedean_model_",modelSetting,"_ID_")
+
+fName <- paste0("Archimedean","_setting_",setting,"_model_", modelSetting,"_ID_")
 
 df_raw <- data.frame(input_par)
 df_raw$simID <- 1:nrow(df_raw)
@@ -45,7 +46,7 @@ existing <- as.numeric(sapply(flist, FUN = function(x) as.numeric(strsplit(strsp
 
 df <- df_raw[which(is.element(df_raw$simID, existing)),] 
 
-load("../Data/Rdata/Archimedeanres_setting_arch1.Rdata")
+load(paste0("../Data/Rdata/",fName, "1.Rdata"))
 
 input_models <- names(res$es_list)
 input_scores <- names(res)
@@ -72,10 +73,10 @@ head(dfmc)
 
 library(forecast) # for DM test function
 
-for(filename in flist){
-  load(paste0("../Data/Rdata/", filename))
-  ID <- as.numeric(as.numeric(strsplit(strsplit(filename, "Archimedeanres_setting_arch")[[1]][2], ".Rdata")))
-  print(which(flist == filename))
+for(ID in existing[!is.na(existing)]){
+  load(paste0("../Data/Rdata/", fName, ID,".Rdata"))
+  print(ID)
+
   
   for(this_model in input_models){
     for(this_score in input_scores){
@@ -121,5 +122,5 @@ for(filename in flist){
 }
 
 
-save(dfmc, file = paste0("../Data/TestStatistic/TestStatistic_Archimedean_model_", modelSetting, ".Rdata"))
+save(dfmc, file = paste0("../Data/TestStatistic/TestStatistic_Archimedean_setting_",setting,"_model_", modelSetting, ".Rdata"))
 

@@ -8,10 +8,11 @@ setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_p
 # Model 1 : Standard Gaussian Marginals
 
 modelSetting <- 1
+setting <- 2
 
 
 
-load(paste0("../Data/TestStatistic/TestStatistic_Archimedean_model_", modelSetting, ".Rdata"))
+load(paste0("../Data/TestStatistic/TestStatistic_Archimedean_setting_", setting, "_model_", modelSetting, ".Rdata"))
 
 df <- dfmc; rm(dfmc)
 
@@ -24,16 +25,11 @@ input_copula <- c("Frank","Gumbel", "Clayton")
 input_d <- 3
 
 
-# # Put the parameters in a grid
-# input_par <- expand.grid(input_theta0, input_theta, input_copula, input_d)
-# names(input_par) <- c("theta0", "theta", "copula",  "d")
-
-
 df1$value <- (-1)*df1$value
 df0 <- df1
 
 input_scores <- unique(df1$score)
-plot_folder <- paste0("../Data/Plots/Arch_model_",modelSetting,"/")
+plot_folder <- paste0("../Data/Plots/Arch_setting_",setting,"_model_",modelSetting,"/")
 dir.create(file.path(plot_folder), showWarnings = FALSE)
 
 
@@ -70,7 +66,7 @@ plotScores <- function(dfplot, cop, this_score){
   
   alpha <- 0.25
   
-  quants <- unname(quantile(dfplot$value, c(0.1, 0.9)))
+  quants <- unname(quantile(dfplot$value, c(0.01, 0.99)))
   
   ylimits <- c(1.5 * min(quants[1], qnorm(alpha)), 1.5 * max(quants[2], qnorm(1 - alpha)))
   
@@ -103,6 +99,18 @@ plotScores <- function(dfplot, cop, this_score){
   return(p1)
 }
 
+saveFigure <- function(fileName, fig) {
+  res <- 400
+  
+  ggsave(
+    paste0(plot_folder, fileName),
+    fig,
+    width = plotWidth,
+    height = plotHeight,
+    dpi = res
+  )
+}
+
 ## ES
 this_score <- "es_list"
 
@@ -114,32 +122,22 @@ p1saveFrank <- plotScores(dfplot, "Frank", this_score)
 p1saveClayton <- plotScores(dfplot, "Clayton", this_score)
 p1saveGumbel <- plotScores(dfplot, "Gumbel", this_score)
 
+plotWidth <- 9
+plotHeight <- 6
 # Save the plots individually
-plotWidth <- 1000
-plotHeight <- 600
-plotPointSize <- 11
-
-png(paste0(plot_folder, "Arch_ES_Clayton_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
-p1saveClayton
-dev.off()
-
-png(paste0(plot_folder, "Arch_ES_Frank_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
-p1saveFrank
-dev.off()
-
-png(paste0(plot_folder, "Arch_ES_Gumbel_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
-p1saveGumbel
-dev.off()
+saveFigure(paste0("Arch_ES_Clayton_setting_", setting, "_model_",modelSetting,".png"),p1saveClayton)
+saveFigure(paste0("Arch_ES_Frank_setting_", setting, "_model_",modelSetting,".png"),p1saveFrank)
+saveFigure(paste0("Arch_ES_Gumbel_setting_", setting, "_model_",modelSetting,".png"),p1saveGumbel)
+print("Finished individual plots ES")
 
 
 ### Join the plots
 
 library(gridExtra)
-
-pdf(paste0(plot_folder, "Arch_ES_Combined_model_",modelSetting,".pdf"), width = 15, height = 24, pointsize = 11)
-png(paste0(plot_folder, "Arch_ES_Combined_model_",modelSetting,".png"), width = 1000, height = 2000, pointsize = 11)
-grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1)
-dev.off()
+plotWidth <- 9
+plotHeight <- 25
+saveFigure(paste0("Arch_ES_Combined_setting_", setting, "_model_",modelSetting,".png"), grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1))
+print("Finished combined plots ES")
 
 ## VS
 
@@ -153,25 +151,18 @@ p1saveFrank <- plotScores(dfplot, "Frank", this_score)
 p1saveClayton <- plotScores(dfplot, "Clayton", this_score)
 p1saveGumbel <- plotScores(dfplot, "Gumbel", this_score)
 
+plotWidth <- 9
+plotHeight <- 6
 # Save the individual plots
-png(paste0(plot_folder, "Arch_VS_Clayton_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
-p1saveClayton
-dev.off()
-
-png(paste0(plot_folder, "Arch_VS_Frank_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
-p1saveFrank
-dev.off()
-
-png(paste0(plot_folder, "Arch_VS_Gumbel_model_",modelSetting,".png"), width = plotWidth, height = plotHeight, pointsize = plotPointSize)
-p1saveGumbel
-dev.off()
+saveFigure(paste0("Arch_VS_Clayton_setting_", setting, "_model_",modelSetting,".png"),p1saveClayton)
+saveFigure(paste0("Arch_VS_Frank_setting_", setting, "_model_",modelSetting,".png"),p1saveFrank)
+saveFigure(paste0("Arch_VS_Gumbel_setting_", setting, "_model_",modelSetting,".png"),p1saveGumbel)
+print("Finished individual plots VS")
 
 
 ### Join the plots
 
-library(gridExtra)
-
-pdf(paste0(plot_folder, "Arch_VS_Combined_model_",modelSetting,".pdf"), width = 15, height = 24, pointsize = 11)
-png(paste0(plot_folder, "Arch_VS_Combined_model_",modelSetting,".png"), width = 1000, height = 2000, pointsize = 11)
-grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1)
-dev.off()
+plotWidth <- 9
+plotHeight <- 25
+saveFigure(paste0("Arch_VS_Combined_setting_", setting, "_model_",modelSetting,".png"), grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1))
+print("Finished combined plots VS")

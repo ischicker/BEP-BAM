@@ -1,8 +1,5 @@
 # multivariate post-processing methods, applied to result of univariate post-processing 
 
-# Note that parts of the notation may differ from the notation in the paper
-#   ... in particular regarding the numbering of the settings which was changed during the revision (2 -> S1; 3 -> 2; 4 -> 3A, new: 3B)
-
 # the following methods are applied:
 #   - EMOS-X: not accounting for any multivariate dependencies, independent samples from fc distributions in margins
 #       EMOS-Q: equidistant quantiles at levels 1/m+1, ..., m/m+1
@@ -46,16 +43,35 @@
 #     This input is not required, and only used in the run_all function for the simulation
 
 
-# Copula fitting should be added here
+# Sample run:
+
+# Source all files
+# setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/simulation code")
+# dir <- "./sourceArchimedean/"
+# source(paste0(dir, "generate_observations_arch.R"))
+# source(paste0(dir, "generate_ensfc_arch.R"))
+# source(paste0(dir, "postprocess_ensfc_arch.R"))
+# source(paste0(dir, "mvpp_arch.R"))
+# source(paste0(dir, "evaluation_functions_arch.R"))
+# 
+# obs <- generate_obs(model = 1, nout = 10, ninit = 5, d = 3, theta0 = 5, theta = 10, copula = "Frank")
+# fc <- generate_ensfc(model = 1, nout = 10, ninit = 5, nmembers = 5, d = 3, theta0 = 5, theta = 10, copula = "Frank")
+# pp_out <- postproc(fcmodel = 1, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
+#                    obs = obs$obs, obs_init = obs$obs_init,
+#                    train = "init", trainlength = NULL, emos_plus = TRUE)
+# mvd <- mvpp(method = "Frank", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
+#             obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out)
 
 
 
-mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL){
+
+mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL, timeWindow){
   
   # include some checks for inputs
   
   # generate array for ouput
   mvppout <- array(NA, dim = dim(ensfc))
+  params <- array(NA, dim = dim(ensfc)[1])
   n <- dim(mvppout)[1]
   m <- dim(mvppout)[2]
   d <- dim(mvppout)[3]
@@ -184,18 +200,28 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
     obs_all <- rbind(obs_init, obs)
     
     for(nn in 1:n){
-      # select forecast cases to estimatate covariance matrix
-      #   ... theoretically, covariance matrix could also be estimated from past ensemble forecasts
-      #   ... to speed up computation, it would also be possible to only use obs_init
-      obs_train <- obs_all[1:(dim(obs_init)[1]+nn-1), ]
+      # Only last measurements
+      obs_train <- obs_all[(dim(obs_init)[1]+nn - timeWindow):(dim(obs_init)[1]+nn-1), ]
       # estimate covariance matrix
       cov_obs <- cov(obs_train)
       # draw random sample from multivariate normal distribution with this covariance matrix
-      mvsample <- mvrnorm(n = m, mu = rep(0,d), Sigma = cov_obs)
+      # Make sure to get numeric values
+      repeat {
+        # Dependence structure by Copula
+        mvsample <- mvrnorm(n = m, mu = rep(0,d), Sigma = cov_obs)
+        
+        if (all(is.finite(mvsample))) {
+          break
+        }
+        set.seed(sample(1:1000,1))
+        print("Repeating...1")
+      }
+      
       # impose dependence structure on post-processed forecasts
       for(dd in 1:d){
         par <- postproc_out[nn, dd, ]
-        mvppout[nn, , dd] <- qnorm(pnorm(mvsample[, dd]), mean = par[1], sd = par[2])
+        # Using log=T to capture outliers (that otherwise get an infinite value)
+        mvppout[nn, , dd] <- qnorm(pnorm(mvsample[, dd], log=T), mean = par[1], sd = par[2],log=T)
       }
     }
     
@@ -215,10 +241,9 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       obs_all <- rbind(obs_init, obs)
       
       for(nn in 1:n){
-        # select forecast cases to estimatate covariance matrix
-        #   ... theoretically, covariance matrix could also be estimated from past ensemble forecasts
-        #   ... to speed up computation, it would also be possible to only use obs_init
-        obs_train <- obs_all[1:(dim(obs_init)[1]+nn-1), ]
+        # Use a shifting time window of length obs_init to compute copula parameters
+        obs_train <- obs_all[(dim(obs_init)[1]+nn - timeWindow):(dim(obs_init)[1]+nn-1), ]
+
         
         # The input for the copulas are the CDF values of the margins
         obs_train_CDF <- c()
@@ -226,20 +251,41 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
           obs_train_CDF <- cbind(obs_train_CDF, pnorm(obs_train[,i], mean = 0, sd = 1))
         }
         
-        # Estimate the parameter and copula
+        # Estimate the parameter and copula - itau method does not converge for some cases (without giving a warning/ error and runs indefinitely)
+        # Copula parameters are bounded to prevent generating inf samples
         if (method == "Clayton") {
-          fitcop <- fitCopula(claytonCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1)
+          fitcop <-tryCatch({
+            fitCopula(claytonCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1,optim.control = list(maxit=1000), upper = 100)
+          }, error = function(e) {
+              indepCopula(dim=d)
+          })
         }
         else if (method == "Frank") {
-          fitcop <- fitCopula(frankCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1)
+          fitcop <-tryCatch({
+            fitCopula(frankCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1,optim.control = list(maxit=1000), upper = 100)
+          }, error = function(e) {
+            indepCopula(dim=d)
+          })
         }
         else if (method == "Gumbel") {
-          fitcop <- fitCopula(gumbelCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1)
+          fitcop <-tryCatch({
+            fitCopula(gumbelCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1,optim.control = list(maxit=1000), upper = 100)
+          }, error = function(e) {
+            indepCopula(dim=d)
+          })
         } else {
           stop("Incorrect copula")
         }
         
-        cop <- fitcop@copula
+        if (!(class(fitcop) == "indepCopula")){
+          cop <- fitcop@copula
+        
+          # Save the fitted parameter
+          params[nn] <- fitcop@estimate
+        } else {
+          print("Using indep copula")
+          cop <- fitcop
+        }
         
         # draw random sample from multivariate normal distribution with this estimated copula
         paramMargins <- list()
@@ -252,9 +298,21 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
                                paramMargins=paramMargins)
         
-        # Dependence structure by Copula
-        mvsample <- rMvdc(m, mvDistribution)
+        .GlobalEnv$db <- mvDistribution
         
+        # Make sure to get numeric values
+        repeat {
+          # Dependence structure by Copula
+          mvsample <- rMvdc(m, mvDistribution)
+          
+          if (all(is.finite(mvsample))) {
+            break
+          }
+          
+          set.seed(sample(1:1000,1))
+          
+          print("Repeating...2")
+        }
         
         for(dd in 1:d){
           
@@ -330,7 +388,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
     # end of dECC code   
   }
   
-  return(mvppout)
+  return(list("mvppout" = mvppout, "params" = params))
   # in random methods: distinguish cases with and without given EMOS_sample, maybe only handle that with sample at first, rest can be included later on
   # if no sample is given, a new one has to be generated, as done for the EMOS methods themselves
 }
