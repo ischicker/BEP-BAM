@@ -12,7 +12,7 @@ source(paste0(dir, "generate_ensfc_arch.R"))
 source(paste0(dir, "postprocess_ensfc_arch.R"))
 source(paste0(dir, "mvpp_arch.R"))
 source(paste0(dir, "evaluation_functions_arch.R"))
-
+source(paste0(dir, "CopulaParameter.R"))
 
 # Any change in the number of parameters should be reflected in the run_wrapper function
 
@@ -27,12 +27,15 @@ input_copula <- c("Frank","Gumbel", "Clayton")
 # Dimension of multi-index l (weather variable, position and look-ahead time)
 input_d <- 3
 
+# Repetitions
+repetitions <- 10
+
 # Put the parameters in a grid
-input_par <- expand.grid(input_theta0, input_theta, input_copula, input_d)
-names(input_par) <- c("theta0", "theta", "copula",  "d")
+input_par <- expand.grid(input_copula, input_d, 1:repetitions)
+names(input_par) <- c("copula",  "d", "repetition")
 
 # Number of Monte Carlo repetitions
-MC_reps <- 100
+MC_reps <- 75
 
 # Parameter that influences reliability of methods such as Ssh and ECC.S --> large value for MC reps also does the trick
 randomRepetitions <- 1
@@ -60,15 +63,15 @@ ensembleMembers <- 50
 # ForecastModel denotes the model that is used to generate the forecasts
 
 # Setting parameter for different runs
-setting <- 2
+setting <- 1
 
-# Model 1 : Standard Gaussian Marginals
-modelSetting <- 1
+# Model 1 : Standard Gaussian Marginals for fixed theta
+# Model 2 is for a sampled Kendall's tau from which the copula parameters are estimated
+observationsModel <- 2
 
-observationsModel <- modelSetting
-forecastModel <- modelSetting
 
-# Model 2 : 
+forecastModel <- 2
+
 
 
 
@@ -86,17 +89,17 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
   
   # generate objects to save scores to
   modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca","clayton","frank","gumbel")
-  crps_list <- es_list <- vs1_list <- vs1w_list <- vs0_list <- vs0w_list <- param_list <- list()
+  crps_list <- es_list <- vs1_list <- vs1w_list <- vs0_list <- vs0w_list <- param_list <- indep_list <- list()
   # Timing_list stores the time needed to do all relevant computations
   timing_list <- list()
   for(mm in 1:length(modelnames)){
     es_list[[mm]] <- vs1_list[[mm]] <- vs1w_list[[mm]] <- 
-      vs0_list[[mm]] <- vs0w_list[[mm]] <- param_list[[mm]] <- matrix(NA, nrow = MCrep, ncol = nout) 
+      vs0_list[[mm]] <- vs0w_list[[mm]] <- param_list[[mm]] <- indep_list[[mm]] <- matrix(NA, nrow = MCrep, ncol = nout) 
     crps_list[[mm]] <- array(NA, dim = c(MCrep, nout, d))
     timing_list[[mm]] <- array(NA, dim = MCrep) 
   }
   names(crps_list) <- names(es_list) <- names(vs1_list) <- names(vs1w_list) <- 
-    names(vs0_list) <- names(vs0w_list) <- names(param_list) <- names(timing_list) <- modelnames
+    names(vs0_list) <- names(vs0w_list) <- names(param_list) <- names(indep_list) <- names(timing_list) <- modelnames
   
   for(rr in 1:MCrep){
     if(progress_ind){
@@ -164,6 +167,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
     end_time <- Sys.time()
     
     timing_list$ens[rr] <- end_time - start_time
+    
     
     # EMOS.Q
     start_time <- Sys.time()
@@ -328,7 +332,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
     # Archimedean copulas -> involves randomness -> repeat rand_rep times
     for (method in c("Clayton","Frank", "Gumbel")) {
       es_list_tmp <- vs1_list_tmp <- vs1w_list_tmp <- 
-        vs0_list_tmp <- vs0w_list_tmp <- param_list_temp <- matrix(NA, nrow = nout, ncol = rand_rep)
+        vs0_list_tmp <- vs0w_list_tmp <- param_list_temp <- indep_list_temp <- matrix(NA, nrow = nout, ncol = rand_rep)
       crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
       timing_list_tmp <- array(NA, dim = rand_rep)
       for(RR in 1:rand_rep){
@@ -346,6 +350,8 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
         vs0_list_tmp[,RR] <- tmp$vs0
         vs0w_list_tmp[,RR] <- tmp$vs0w
         param_list_temp[,RR] <- mvd$params
+        indep_list_temp[,RR] <- mvd$indep
+        
         
         end_time <- Sys.time()
         
@@ -361,6 +367,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
         vs0w_list$clayton[rr, ] <- apply(vs0w_list_tmp, 1, mean)
         param_list$clayton[rr, ] <- apply(param_list_temp, 1, mean)
         timing_list$clayton[rr] <- apply(timing_list_tmp, 1, mean)
+        indep_list$clayton[rr,] <- apply(indep_list_temp, 1, mean)
       } else if (method == "Frank") {
         crps_list$frank[rr,,] <- apply(crps_list_tmp, c(1,2), mean)
         es_list$frank[rr, ] <- apply(es_list_tmp, 1, mean)
@@ -370,6 +377,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
         vs0w_list$frank[rr, ] <- apply(vs0w_list_tmp, 1, mean)
         param_list$frank[rr, ] <- apply(param_list_temp, 1, mean)
         timing_list$frank[rr] <- apply(timing_list_tmp, 1, mean)
+        indep_list$frank[rr,] <- apply(indep_list_temp, 1, mean)
       } else if (method == "Gumbel") {
         crps_list$gumbel[rr,,] <- apply(crps_list_tmp, c(1,2), mean)
         es_list$gumbel[rr, ] <- apply(es_list_tmp, 1, mean)
@@ -379,6 +387,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
         vs0w_list$gumbel[rr, ] <- apply(vs0w_list_tmp, 1, mean)
         param_list$gumbel[rr, ] <- apply(param_list_temp, 1, mean)
         timing_list$gumbel[rr] <- apply(timing_list_tmp, 1, mean)
+        indep_list$gumbel[rr,] <- apply(indep_list_temp, 1, mean)
       } 
     }
     
@@ -387,13 +396,15 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
   
   # return results, as a huge list
   out <- list("crps_list" = crps_list, "es_list" = es_list, "vs1_list" = vs1_list,
-              "vs1w_list" = vs1w_list, "vs0_list" = vs0_list, "vs0w_list" = vs0w_list, "param_list" = param_list, "timing_list" = timing_list)
+              "vs1w_list" = vs1w_list, "vs0_list" = vs0_list, "vs0w_list" = vs0w_list, "param_list" = param_list, "indep_list" = indep_list, "timing_list" = timing_list)
   return(out)
 }
 
 
 run_wrapper <- function(runID){
   # sink(file = paste0(Rout_dir, "_model_",modelSetting,"_ID_", runID, ".Rout"))
+  # Frank copula can only deal with positive tau values
+  tau <- runif(1, 0, 1)
   par_values <- as.numeric(input_par[ID, ])
   res <- run_setting1(obsmodel = observationsModel, fcmodel = forecastModel, nout = evalDays, ninit = trainingDays, 
                   nmembers = ensembleMembers, timeWindow = timeWindow,
@@ -402,8 +413,11 @@ run_wrapper <- function(runID){
                   theta0 = input_par$theta0[runID], 
                   theta = input_par$theta[runID], 
                   copula = input_par$copula[runID],
-                  d = input_par$d[runID])
-  savename <- paste0(Rdata_dir,"_setting_",setting, "_model_",modelSetting,"_ID_", runID, ".Rdata")
+                  d = input_par$d[runID],
+                  tau = tau)
+  res$tau <- tau
+  
+  savename <- paste0(Rdata_dir,"_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"_ID_", runID, ".Rdata")
   save(res, input_par, file = savename)
   # sink()
 }

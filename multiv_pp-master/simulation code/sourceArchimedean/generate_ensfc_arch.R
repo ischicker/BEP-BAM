@@ -90,6 +90,62 @@ generate_ensfc <- function(model, nout, ninit, nmembers, d, ...){
       ensfc[nn,,] <- tmp
     }
   }
+  
+  # Setting 2 (Sampled tau)
+  if(model == 2){
+    
+    
+    # check if appropriate additional parameters are given
+    input <- list(...)
+    required <- c("tau","copula")
+    ind_check <- match(required, names(input), nomatch = 0)
+    if(any(ind_check == 0)){
+      stop(paste("Missing additional model-specific parameter",
+                 paste("Given input:", paste(names(input), collapse=", ")),
+                 paste("Required input:", paste(required, collapse=", ")),
+                 sep="\n")
+      )
+    }
+    
+    # Assign dependence parameter and copula from input
+    tau <- input$tau
+    copula <- input$copula
+    
+    if (copula == "Frank"){
+      # -infty < theta < infty and theta != 0
+      cop <- frankCopula(param = tauToParam("Frank",tau), dim = d)
+    } else if (copula == "Gumbel") {
+      # 1 <= theta < infty
+      cop <- gumbelCopula(param = tauToParam("Gumbel",tau), dim = d)
+    } else if (copula == "Clayton") {
+      # -1 <= theta < infty and theta != 0
+      cop <- claytonCopula(param = tauToParam("Clayton",tau), dim = d)
+    } else {
+      stop(paste("Incorrect value for 'copula' input"))
+    }
+    
+    
+    paramMargins <- list()
+    
+    for (i in 1:d){
+      paramMargins[[i]] <- list(mean = 0, sd = 1)
+    }
+    
+    # Generate observations with standard normal marginals
+    mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
+                           paramMargins=paramMargins)
+    
+    
+    # generate forecasts
+    for(nn in 1:ninit){
+      tmp <- rMvdc(m, mvDistribution)
+      ensfc_init[nn,,] <- tmp
+    }
+    for(nn in 1:nout){
+      tmp <- rMvdc(m, mvDistribution)
+      ensfc[nn,,] <- tmp
+    }
+  }
 
   return(list("ensfc_init" = ensfc_init, "ensfc" = ensfc))
 }

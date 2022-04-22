@@ -87,6 +87,56 @@ generate_obs <- function(model, nout, ninit, d, ...){
     
   }
   
+  # Setting 2 (Sample Kendall's tau)
+  if(model == 2){
+    
+    # check if appropriate additional parameters are given
+    input <- list(...)
+    required <- c("copula", "tau")
+    ind_check <- match(required, names(input), nomatch = 0)
+    if(any(ind_check == 0)){
+      stop(paste("Missing additional model-specific parameter",
+                 paste("Given input:", paste(names(input), collapse=", ")),
+                 paste("Required input:", paste(required, collapse=", ")),
+                 sep="\n")
+      )
+    }
+    
+    # Assign dependence parameter and copula from input
+    tau <- input$tau
+    copula <- input$copula
+    
+    if (copula == "Frank"){
+      # -infty < theta0 < infty and theta0 != 0
+      cop <- frankCopula(param = tauToParam("Frank",tau), dim = d)
+    } else if (copula == "Gumbel") {
+      # 1 <= theta0 < infty
+      cop <- gumbelCopula(param = tauToParam("Gumbel",tau), dim = d)
+    } else if (copula == "Clayton") {
+      # -1 <= theta0 < infty and theta0 != 0
+      cop <- claytonCopula(param = tauToParam("Clayton",tau), dim = d)
+    } else {
+      stop(paste("Incorrect value for 'copula' input"))
+    }
+    
+    
+    paramMargins <- list()
+    
+    for (i in 1:d){
+      paramMargins[[i]] <- list(mean = 0, sd = 1)
+    }
+    
+    # Generate observations with standard normal marginals
+    mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
+                           paramMargins=paramMargins)
+    
+    # Random sample from the mvdc
+    obs_init <- rMvdc(ninit, mvDistribution)
+    obs <- rMvdc(nout, mvDistribution)
+    
+    
+  }
+  
 
   
   return(list("obs_init" = obs_init, "obs" = obs))

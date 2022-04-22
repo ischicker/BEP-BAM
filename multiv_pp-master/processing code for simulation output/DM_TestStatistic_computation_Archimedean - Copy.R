@@ -10,9 +10,9 @@ setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_p
 # parameters to run
 
 # Dependence parameter between weather variables for observations
-input_theta0 <- c(5, 10)
+# input_theta0 <- c(5, 10)
 # Dependence parameter between weather variables for ensemble forecasts
-input_theta <- c(5, 10)
+# input_theta <- c(5, 10)
 
 # Copula type
 input_copula <- c("Frank","Gumbel", "Clayton")
@@ -20,29 +20,36 @@ input_copula <- c("Frank","Gumbel", "Clayton")
 # Dimension
 input_d <- 3
 
+# Repetitions
+repetitions <- 10
 
 # Put the parameters in a grid
-input_par <- expand.grid(input_theta0, input_theta, input_copula, input_d)
-names(input_par) <- c("theta0", "theta", "copula",  "d")
+input_par <- expand.grid(input_copula, input_d, 1:repetitions)
+names(input_par) <- c("copula",  "d", "repetition")
 
 # Number of Monte Carlo repetitions
-MC_reps <- 100
+MC_reps <- 75
 
 # Setting parameter for different runs
-setting <- 2
+setting <- 1
 
 # Model 1 : Standard Gaussian Marginals
 
-modelSetting <- 1
+observationsModel <- 2
 
 
-fName <- paste0("Archimedean","_setting_",setting,"_model_", modelSetting,"_ID_")
+forecastModel <- 2
+
+
+fName <- paste0("Archimedean","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"_ID_")
 
 df_raw <- data.frame(input_par)
 df_raw$simID <- 1:nrow(df_raw)
 
 flist <- list.files("../Data/Rdata/")
 existing <- as.numeric(sapply(flist, FUN = function(x) as.numeric(strsplit(strsplit(x, fName)[[1]][2], ".Rdata"))))
+
+
 
 df <- df_raw[which(is.element(df_raw$simID, existing)),] 
 
@@ -55,7 +62,7 @@ df_use <- as.data.frame(df[1,])
 df_use$model <- as.character("a")
 df_use$score <- as.character("a")
 
-model_score_grid <- expand.grid(input_models, input_scores)
+model_score_grid <- expand.grid(input_models, input_scores[!input_scores %in% c("param_list", "indep_list", "tau", "timing_list")])
 
 # Produces df of the form
 #         rho0  eps   sigma   rho   d   simID   model   score
@@ -69,7 +76,8 @@ for(i in 1:nrow(df)){
 # Makes a copy of df_use for each MC_rep
 dfmc <- data.frame(cbind(zoo::coredata(df_use)[rep(seq(nrow(df_use)),MC_reps),]))
 dfmc$value <- NA
-head(dfmc)
+dfmc$tau <- NA
+# head(dfmc)
 
 library(forecast) # for DM test function
 
@@ -116,11 +124,12 @@ for(ID in existing[!is.na(existing)]){
       
       
       dfmc$value[ind] <- dm_teststat_vec
+      dfmc$tau[ind] <- res$tau
     }
   }
   
 }
 
 
-save(dfmc, file = paste0("../Data/TestStatistic/TestStatistic_Archimedean_setting_",setting,"_model_", modelSetting, ".Rdata"))
+save(dfmc, file = paste0("../Data/TestStatistic/TestStatistic_Archimedean","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".Rdata"))
 

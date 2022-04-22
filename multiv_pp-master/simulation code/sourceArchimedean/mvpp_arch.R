@@ -72,6 +72,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
   # generate array for ouput
   mvppout <- array(NA, dim = dim(ensfc))
   params <- array(NA, dim = dim(ensfc)[1])
+  indep <- array(NA, dim = dim(ensfc)[1])
   n <- dim(mvppout)[1]
   m <- dim(mvppout)[2]
   d <- dim(mvppout)[3]
@@ -279,10 +280,12 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         
         if (!(class(fitcop) == "indepCopula")){
           cop <- fitcop@copula
+          indep[nn] <- FALSE
         
           # Save the fitted parameter
           params[nn] <- fitcop@estimate
         } else {
+          indep[nn] <- TRUE
           print("Using indep copula")
           cop <- fitcop
         }
@@ -298,7 +301,6 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
                                paramMargins=paramMargins)
         
-        .GlobalEnv$db <- mvDistribution
         
         # Make sure to get numeric values
         repeat {
@@ -388,7 +390,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
     # end of dECC code   
   }
   
-  return(list("mvppout" = mvppout, "params" = params))
+  return(list("mvppout" = mvppout, "params" = params, "indep" = indep))
   # in random methods: distinguish cases with and without given EMOS_sample, maybe only handle that with sample at first, rest can be included later on
   # if no sample is given, a new one has to be generated, as done for the EMOS methods themselves
 }

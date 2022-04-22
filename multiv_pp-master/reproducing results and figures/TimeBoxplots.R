@@ -10,7 +10,7 @@ setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_p
 modelSetting <- 1
 setting <- 2
 
-fName <- paste0("Archimedean","_setting_",setting,"_model_", modelSetting,"_ID_")
+fName <- paste0("Archimedean","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"_ID_")
 
 
 flist <- list.files("../Data/Rdata/")
