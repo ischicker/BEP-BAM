@@ -5,27 +5,18 @@ library(gridExtra)
 
 setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
 
-# Model 1 : Standard Gaussian Marginals
 
-observationsModel <- 2
+source("../Settings.R")
 
+getModelSettings(modelSetting = 3)
 
-forecastModel <- 2
 setting <- 1
-
-
 
 load(paste0("../Data/TestStatistic/TestStatistic_Archimedean","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".Rdata"))
 
 df <- dfmc; rm(dfmc)
 
 df1 <- subset(df)
-
-
-input_theta0 <- c(5, 10)
-input_theta <- c(5, 10)
-input_copula <- c("Frank","Gumbel", "Clayton")
-input_d <- 3
 
 
 df1$value <- (-1)*df1$value
@@ -142,6 +133,45 @@ plotScoresTau <- function(dfplot, cop, this_score, isAverage){
   return(p1)
 }
 
+plotScoresLerch <- function(dfplot, this_score){
+  
+  
+  alpha <- 0.25
+  
+  quants <- unname(quantile(dfplot$value, c(0.01, 0.99)))
+  
+  ylimits <- c(1.5 * min(quants[1], qnorm(alpha)), 1.5 * max(quants[2], qnorm(1 - alpha)))
+  
+  
+  
+  p1 <- ggplot(dfplot, aes(model, value, colour = model))
+  p1 <- p1 + ylim(ylimits[1], ylimits[2])
+  p1 <- p1 + geom_rect(mapping=aes(xmin=-Inf, xmax=Inf, ymin=qnorm(alpha), ymax=qnorm(1-alpha)), fill = "gray75", color="gray75", alpha=alpha)
+  p1 <- p1 + geom_boxplot(outlier.shape = NA) + geom_hline(yintercept = 0, linetype = "dashed", color = "gray25")
+  
+  
+  p1 <- p1 + facet_grid(rows = vars(rho), cols = vars(rho0),
+                        labeller = label_bquote(rows = rho==.(rho),
+                                                cols = rho[0] == .(rho0)))
+
+  
+  scval <- strsplit(this_score, split = "_")[[1]][1]
+  if(scval == "es"){ 
+    title <- bquote("Energy Score,"~sigma==sqrt(5))
+    p1 <- p1 + ggtitle(title)
+  } 
+  if(scval == "vs1"){
+    title <- bquote("Variogram Score,"~sigma==sqrt(5))
+    p1 <- p1 + ggtitle(title)
+  }
+  
+  
+  p1 <- p1 + theme_bw() + theme(legend.position = "bottom")
+  p1 <- p1 + xlab("Model") + ylab("DM test statistic") 
+  p1 <- p1 + scale_color_manual(values = mypal_use, name = "Model", label = model_vec) 
+  p1 <- p1 + scale_x_discrete(label = model_vec)
+  return(p1)
+}
 
 saveFigure <- function(fileName, fig) {
   res <- 400
@@ -164,7 +194,7 @@ if (observationsModel == 1) {
   
   plotWidth <- 9
   plotHeight <- 6 * max(dfplot$repetition)
-  
+
   dfplot$equalThetas <- (dfplot$theta0 == dfplot$theta)
   # Get the plots
   p1saveFrank <- plotScores(dfplot, "Frank", this_score)
@@ -178,19 +208,19 @@ if (observationsModel == 1) {
   print("Finished individual plots ES")
 } else if (observationsModel == 2) {
   
-  plotWidth <- 9
-  plotHeight <- 6 * max(dfplot$repetition)
-  
-  p1saveFrank <- plotScoresTau(dfplot, "Frank", this_score, FALSE)
-  p1saveClayton <- plotScoresTau(dfplot, "Clayton", this_score, FALSE)
-  p1saveGumbel <- plotScoresTau(dfplot, "Gumbel", this_score,FALSE)
-  
-  # Save the plots individually
-  saveFigure(paste0("Arch_ES_Separated_Clayton","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveClayton)
-  saveFigure(paste0("Arch_ES_Separated_Frank","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveFrank)
-  saveFigure(paste0("Arch_ES_Separated_Gumbel","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveGumbel)
-  
-  print("Finished ES Separated")
+  # plotWidth <- 9
+  # plotHeight <- 6 * max(dfplot$repetition)
+  # 
+  # p1saveFrank <- plotScoresTau(dfplot, "Frank", this_score, FALSE)
+  # p1saveClayton <- plotScoresTau(dfplot, "Clayton", this_score, FALSE)
+  # p1saveGumbel <- plotScoresTau(dfplot, "Gumbel", this_score,FALSE)
+  # 
+  # # Save the plots individually
+  # saveFigure(paste0("Arch_ES_Separated_Clayton","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveClayton)
+  # saveFigure(paste0("Arch_ES_Separated_Frank","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveFrank)
+  # saveFigure(paste0("Arch_ES_Separated_Gumbel","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveGumbel)
+  # 
+  # print("Finished ES Separated")
   
   plotWidth <- 9
   plotHeight <- 6
@@ -206,6 +236,12 @@ if (observationsModel == 1) {
   
   print("Finished ES Together")
   
+} else if (observationsModel == 3) {
+  plotWidth <- 12
+  plotHeight <- 6 
+  
+  p1 <- plotScoresLerch(dfplot, this_score)
+  saveFigure(paste0("Lerch_ES","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1)
 }
 
 
@@ -221,7 +257,7 @@ if (observationsModel == 1) {
 }
 ## VS
 
-this_score <- "vs1_list"
+this_score <- "vs0_list"
 
 dfplot <- subset(df2, score == this_score)
 
@@ -244,19 +280,19 @@ if (observationsModel == 1) {
   print("Finished individual plots VS")
 } else if (observationsModel == 2) {
   
-  plotWidth <- 9
-  plotHeight <- 6 * max(dfplot$repetition)
-  
-  p1saveFrank <- plotScoresTau(dfplot, "Frank", this_score, FALSE)
-  p1saveClayton <- plotScoresTau(dfplot, "Clayton", this_score, FALSE)
-  p1saveGumbel <- plotScoresTau(dfplot, "Gumbel", this_score,FALSE)
-  
-  # Save the plots individually
-  saveFigure(paste0("Arch_VS_Separated_Clayton","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveClayton)
-  saveFigure(paste0("Arch_VS_Separated_Frank","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveFrank)
-  saveFigure(paste0("Arch_VS_Separated_Gumbel","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveGumbel)
-  
-  print("Finished VS Separated")
+  # plotWidth <- 9
+  # plotHeight <- 6 * max(dfplot$repetition)
+  # 
+  # p1saveFrank <- plotScoresTau(dfplot, "Frank", this_score, FALSE)
+  # p1saveClayton <- plotScoresTau(dfplot, "Clayton", this_score, FALSE)
+  # p1saveGumbel <- plotScoresTau(dfplot, "Gumbel", this_score,FALSE)
+  # 
+  # # Save the plots individually
+  # saveFigure(paste0("Arch_VS_Separated_Clayton","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveClayton)
+  # saveFigure(paste0("Arch_VS_Separated_Frank","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveFrank)
+  # saveFigure(paste0("Arch_VS_Separated_Gumbel","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveGumbel)
+  # 
+  # print("Finished VS Separated")
   
   plotWidth <- 9
   plotHeight <- 6
@@ -265,13 +301,23 @@ if (observationsModel == 1) {
   p1saveClayton <- plotScoresTau(dfplot, "Clayton", this_score, TRUE)
   p1saveGumbel <- plotScoresTau(dfplot, "Gumbel", this_score,TRUE)
   
+  if (this_score == "vs0_list") {
+    text <- "_weight_0_p_05_"
+  }
+  
   # Save the plots individually
-  saveFigure(paste0("Arch_VS_Together_Clayton","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveClayton)
-  saveFigure(paste0("Arch_VS_Together_Frank","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveFrank)
-  saveFigure(paste0("Arch_VS_Together_Gumbel","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveGumbel)
+  saveFigure(paste0("Arch_VS", text, "Together_Clayton","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveClayton)
+  saveFigure(paste0("Arch_VS", text, "Together_Frank","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveFrank)
+  saveFigure(paste0("Arch_VS", text, "Together_Gumbel","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1saveGumbel)
   
   print("Finished VS Together")
   
+} else if (observationsModel == 3) {
+  plotWidth <- 12
+  plotHeight <- 6 
+  
+  p1 <- plotScoresLerch(dfplot, this_score)
+  saveFigure(paste0("Lerch_VS","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1)
 }
 
 if (observationsModel == 1) {

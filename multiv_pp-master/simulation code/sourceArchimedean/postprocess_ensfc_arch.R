@@ -35,7 +35,7 @@ postproc <- function(fcmodel, ensfc, ensfc_init, obs, obs_init, train, trainleng
   require(scoringRules)
   
   # Setting 1 or 2
-  if(fcmodel == 1 || fcmodel == 2){
+  if(fcmodel == 1 || fcmodel == 2 || fcmodel == 3){
     
     # extract internal CRPS function for normal distributions
     crps_norm <- scoringRules::crps_norm

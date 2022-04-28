@@ -7,7 +7,7 @@ setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_p
 
 
 MC_reps <- 100
-tau <- 0.5
+tau <- 0.9
 d <- 3
 days <- c(1,3,5,10,50)
 cops <- c("Clayton", "Frank", "Gumbel")
@@ -60,7 +60,7 @@ for (MC_rep in 1:MC_reps) {
           obs_train_CDF <- cbind(obs_train_CDF, pnorm(obs[,i], mean = 0, sd = 1))
         }
         
-        tryCatch({
+        try({
         if (method == "Clayton") {
           fitcop <-fitCopula(claytonCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1,optim.control = list(maxit=1000), upper = 100)
           params <- fitcop@estimate
@@ -131,7 +131,7 @@ p1 <- p1 + scale_color_manual(values = mypal_use, name = "Training days") +
 plotWidth <- 9
 plotHeight <- 6
 res <- 400
-fileName <- "Arch_ParamFitting_Tau.png"
+fileName <- paste0("Arch_ParamFitting_Tau_", tau, ".png")
 
 plot_folder <- paste0("../Data/Plots/")
 
@@ -143,52 +143,52 @@ ggsave(
   dpi = res
 )
 
-
-# Plot for theta
-dfplot$differenceTheta <- dfplot$paramValue
-dfplot$differenceTheta[dfplot$fittingMethod == "Clayton"] <- dfplot$differenceTheta[dfplot$fittingMethod == "Clayton"] - 2 * tau / (1-tau)
-dfplot$differenceTheta[dfplot$fittingMethod == "Frank"] <- dfplot$differenceTheta[dfplot$fittingMethod == "Frank"] - tau2par("frk",tau)
-dfplot$differenceTheta[dfplot$fittingMethod == "Gumbel"] <- dfplot$differenceTheta[dfplot$fittingMethod == "Gumbel"] - tau2par("gum",tau)
-
-quants <- unname(quantile(dfplot$differenceTheta, c(0.1, 0.9)))
-
-ylimits <- c(1.5 * quants[1], 1.5 *quants[2])
-
-level_order <- factor(dfplot$daysString, level = as.character(days))
-
-
-p1 <- ggplot(dfplot, aes(level_order, differenceTheta, colour = daysString))
-p1 <- p1 + ylim(ylimits[1], ylimits[2])
-p1 <- p1 + geom_boxplot(outlier.shape = NA) + geom_hline(yintercept = 0, linetype = "dashed", color = "gray25")
-p1 <- p1 + facet_grid(rows = vars(inputCopula), cols = vars(fittingMethod),
-                      labeller = label_bquote(rows = observations: .(inputCopula),
-                                              cols = fitting: .(fittingMethod)))
-
-
-
-p1 <- p1 + ggtitle(bquote(Evaluation~of~parameter~fitting~(tau==.(tau))))
-
-
-
-p1 <- p1 + theme_bw() + theme(legend.position = "bottom")
-p1 <- p1 + xlab("Days") + ylab("Difference fitted parameter and parameter by tau inversion")
-p1 <- p1 + scale_color_manual(values = mypal_use, name = "Training days") +
-  theme(plot.title = element_text(hjust = 0.5))
-
-plotWidth <- 9
-plotHeight <- 6
-res <- 400
-fileName <- "Arch_ParamFitting_Param.png"
-
-plot_folder <- paste0("../Data/Plots/")
-
-ggsave(
-  paste0(plot_folder, fileName),
-  p1,
-  width = plotWidth,
-  height = plotHeight,
-  dpi = res
-)
-
-
-
+# 
+# # Plot for theta
+# dfplot$differenceTheta <- dfplot$paramValue
+# dfplot$differenceTheta[dfplot$fittingMethod == "Clayton"] <- dfplot$differenceTheta[dfplot$fittingMethod == "Clayton"] - 2 * tau / (1-tau)
+# dfplot$differenceTheta[dfplot$fittingMethod == "Frank"] <- dfplot$differenceTheta[dfplot$fittingMethod == "Frank"] - tau2par("frk",tau)
+# dfplot$differenceTheta[dfplot$fittingMethod == "Gumbel"] <- dfplot$differenceTheta[dfplot$fittingMethod == "Gumbel"] - tau2par("gum",tau)
+# 
+# quants <- unname(quantile(dfplot$differenceTheta, c(0.1, 0.9)))
+# 
+# ylimits <- c(1.5 * quants[1], 1.5 *quants[2])
+# 
+# level_order <- factor(dfplot$daysString, level = as.character(days))
+# 
+# 
+# p1 <- ggplot(dfplot, aes(level_order, differenceTheta, colour = daysString))
+# p1 <- p1 + ylim(ylimits[1], ylimits[2])
+# p1 <- p1 + geom_boxplot(outlier.shape = NA) + geom_hline(yintercept = 0, linetype = "dashed", color = "gray25")
+# p1 <- p1 + facet_grid(rows = vars(inputCopula), cols = vars(fittingMethod),
+#                       labeller = label_bquote(rows = observations: .(inputCopula),
+#                                               cols = fitting: .(fittingMethod)))
+# 
+# 
+# 
+# p1 <- p1 + ggtitle(bquote(Evaluation~of~parameter~fitting~(tau==.(tau))))
+# 
+# 
+# 
+# p1 <- p1 + theme_bw() + theme(legend.position = "bottom")
+# p1 <- p1 + xlab("Days") + ylab("Difference fitted parameter and parameter by tau inversion")
+# p1 <- p1 + scale_color_manual(values = mypal_use, name = "Training days") +
+#   theme(plot.title = element_text(hjust = 0.5))
+# 
+# plotWidth <- 9
+# plotHeight <- 6
+# res <- 400
+# fileName <- "Arch_ParamFitting_Param.png"
+# 
+# plot_folder <- paste0("../Data/Plots/")
+# 
+# ggsave(
+#   paste0(plot_folder, fileName),
+#   p1,
+#   width = plotWidth,
+#   height = plotHeight,
+#   dpi = res
+# )
+# 
+# 
+# 

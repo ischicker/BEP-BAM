@@ -5,10 +5,11 @@ library(gridExtra)
 
 setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
 
-# Model 1 : Standard Gaussian Marginals
+source( "../Settings.R")
 
-modelSetting <- 1
-setting <- 2
+setting <- 1
+
+getModelSettings(modelSetting = 2)
 
 fName <- paste0("Archimedean","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"_ID_")
 
@@ -46,7 +47,7 @@ for(ID in existing[!is.na(existing)]){
 
 
 
-plot_folder <- paste0("../Data/Plots/Arch_setting_",setting,"_model_",modelSetting,"/")
+plot_folder <- paste0("../Data/Plots/Arch","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"/")
 dir.create(file.path(plot_folder), showWarnings = FALSE)
 
 
@@ -93,7 +94,7 @@ p1 <- p1 + scale_x_discrete(label = time_obs)+
 plotWidth <- 9
 plotHeight <- 6
 res <- 400
-fileName <- paste0("Arch_Times_setting_", setting, "_model_",modelSetting,".png")
+fileName <- paste0("Arch_Times","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png")
 
 ggsave(
   paste0(plot_folder, fileName),

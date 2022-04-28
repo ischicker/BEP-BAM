@@ -5,40 +5,12 @@ rm(list=ls())
 
 setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/processing code for simulation output")
 
-# parameters 
-# Should be the same as in run_setting?.R
-# parameters to run
-
-# Dependence parameter between weather variables for observations
-# input_theta0 <- c(5, 10)
-# Dependence parameter between weather variables for ensemble forecasts
-# input_theta <- c(5, 10)
-
-# Copula type
-input_copula <- c("Frank","Gumbel", "Clayton")
-
-# Dimension
-input_d <- 3
-
-# Repetitions
-repetitions <- 10
-
-# Put the parameters in a grid
-input_par <- expand.grid(input_copula, input_d, 1:repetitions)
-names(input_par) <- c("copula",  "d", "repetition")
-
-# Number of Monte Carlo repetitions
-MC_reps <- 75
+source( "../Settings.R")
 
 # Setting parameter for different runs
 setting <- 1
 
-# Model 1 : Standard Gaussian Marginals
-
-observationsModel <- 2
-
-
-forecastModel <- 2
+getModelSettings(modelSetting = 3)
 
 
 fName <- paste0("Archimedean","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"_ID_")
@@ -48,7 +20,6 @@ df_raw$simID <- 1:nrow(df_raw)
 
 flist <- list.files("../Data/Rdata/")
 existing <- as.numeric(sapply(flist, FUN = function(x) as.numeric(strsplit(strsplit(x, fName)[[1]][2], ".Rdata"))))
-
 
 
 df <- df_raw[which(is.element(df_raw$simID, existing)),] 
@@ -76,7 +47,10 @@ for(i in 1:nrow(df)){
 # Makes a copy of df_use for each MC_rep
 dfmc <- data.frame(cbind(zoo::coredata(df_use)[rep(seq(nrow(df_use)),MC_reps),]))
 dfmc$value <- NA
-dfmc$tau <- NA
+
+if (modelSetting == 2) {
+  dfmc$tau <- NA
+}
 # head(dfmc)
 
 library(forecast) # for DM test function
@@ -124,7 +98,9 @@ for(ID in existing[!is.na(existing)]){
       
       
       dfmc$value[ind] <- dm_teststat_vec
-      dfmc$tau[ind] <- res$tau
+      if (modelSetting == 2 ){
+        dfmc$tau[ind] <- res$tau 
+      }
     }
   }
   

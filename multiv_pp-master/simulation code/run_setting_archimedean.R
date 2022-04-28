@@ -13,68 +13,12 @@ source(paste0(dir, "postprocess_ensfc_arch.R"))
 source(paste0(dir, "mvpp_arch.R"))
 source(paste0(dir, "evaluation_functions_arch.R"))
 source(paste0(dir, "CopulaParameter.R"))
+source(paste0(dir, "../../Settings.R"))
 
-# Any change in the number of parameters should be reflected in the run_wrapper function
-
-# Dependence parameter between weather variables for observations
-input_theta0 <- c(5, 10)
-# Dependence parameter between weather variables for ensemble forecasts
-input_theta <- c(5, 10)
-
-# Copula type
-input_copula <- c("Frank","Gumbel", "Clayton")
-
-# Dimension of multi-index l (weather variable, position and look-ahead time)
-input_d <- 3
-
-# Repetitions
-repetitions <- 10
-
-# Put the parameters in a grid
-input_par <- expand.grid(input_copula, input_d, 1:repetitions)
-names(input_par) <- c("copula",  "d", "repetition")
-
-# Number of Monte Carlo repetitions
-MC_reps <- 75
-
-# Parameter that influences reliability of methods such as Ssh and ECC.S --> large value for MC reps also does the trick
-randomRepetitions <- 1
-
-
-# Save data
-Rdata_dir <- "../Data/Rdata/Archimedean" # directory to save Rdata files to
-Rout_dir <- "../Data/Rout/Archimedean" # directory to save Rout files to
-
-
-# Simulation parameters
-# evalDays <- 150
-# timeWindow <- 3
-# ensembleMembers <- 50
-
-# Training days should be >= m for Schaake shuffle
-
-evalDays <- 100
-timeWindow <- 3
-trainingDays <- 50
-ensembleMembers <- 50
-
-# Model selection. 
-# ObservationsModel denotes the model that is used to generate the observations
-# ForecastModel denotes the model that is used to generate the forecasts
-
-# Setting parameter for different runs
+# Setting parameter for different runs with same parameters
 setting <- 1
 
-# Model 1 : Standard Gaussian Marginals for fixed theta
-# Model 2 is for a sampled Kendall's tau from which the copula parameters are estimated
-observationsModel <- 2
-
-
-forecastModel <- 2
-
-
-
-
+getModelSettings(modelSetting = 3)
 
 eval_all_mult <- function(mvpp_out, obs){
   esout <- es_wrapper(mvpp_out, obs)
@@ -85,8 +29,10 @@ eval_all_mult <- function(mvpp_out, obs){
   return(list("es" = esout, "vs1" = vs1out, "vs1w" = vs1wout, "vs0" = vs0out, "vs0w" = vs0wout))
 }
 
-run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d, MCrep, rand_rep, progress_ind = FALSE, compute_crps, ...){
+
+run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, MCrep, rand_rep, progress_ind = FALSE, compute_crps, ...){
   
+  d <- list(...)$d
   # generate objects to save scores to
   modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca","clayton","frank","gumbel")
   crps_list <- es_list <- vs1_list <- vs1w_list <- vs0_list <- vs0w_list <- param_list <- indep_list <- list()
@@ -108,23 +54,20 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
       }
     }
     
-    if (rr == 38) {
-      print("here")
-    }
     
     # set random seed
     set.seed(110+rr)
     
     # generate observations
     start_time <- Sys.time()
-    obs <- generate_obs(model = obsmodel, nout = nout, ninit = ninit, d = d, ...)
+    obs <- generate_obs(model = obsmodel, nout = nout, ninit = ninit, ...)
     end_time <- Sys.time()
     
     timing_list$obs[rr] <- end_time - start_time
     
     # generate ensemble forecasts
     start_time <- Sys.time()
-    fc <- generate_ensfc(model = fcmodel, nout = nout, ninit = ninit, nmembers = nmembers, d = d, ...)
+    fc <- generate_ensfc(model = fcmodel, nout = nout, ninit = ninit, nmembers = nmembers, ...)
     end_time <- Sys.time()
     
     timing_list$fc[rr] <- end_time - start_time
@@ -142,8 +85,8 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, d
     # only happens very rarely for extreme parameter combinations
     while(anyNA(pp_out)){
       set.seed(sample(1:100,1))
-      obs <- generate_obs(model = obsmodel, nout = nout, ninit = ninit, d = d, ...)
-      fc <- generate_ensfc(model = fcmodel, nout = nout, ninit = ninit, nmembers = nmembers, d = d, ...)
+      obs <- generate_obs(model = obsmodel, nout = nout, ninit = ninit, ...)
+      fc <- generate_ensfc(model = fcmodel, nout = nout, ninit = ninit, nmembers = nmembers, ...)
       pp_out <- postproc(fcmodel = fcmodel, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init, 
                          obs = obs$obs, obs_init = obs$obs_init, 
                          train = "init", trainlength = NULL, emos_plus = TRUE)
@@ -406,16 +349,16 @@ run_wrapper <- function(runID){
   # Frank copula can only deal with positive tau values
   tau <- runif(1, 0, 1)
   par_values <- as.numeric(input_par[ID, ])
-  res <- run_setting1(obsmodel = observationsModel, fcmodel = forecastModel, nout = evalDays, ninit = trainingDays, 
+
+  res <- do.call("run_setting1",c(obsmodel = observationsModel, fcmodel = forecastModel, nout = evalDays, ninit = trainingDays, 
                   nmembers = ensembleMembers, timeWindow = timeWindow,
                   MCrep = MC_reps, rand_rep = randomRepetitions, 
                   progress_ind = TRUE, compute_crps = TRUE,
-                  theta0 = input_par$theta0[runID], 
-                  theta = input_par$theta[runID], 
-                  copula = input_par$copula[runID],
-                  d = input_par$d[runID],
-                  tau = tau)
-  res$tau <- tau
+                  input_par[rownames(input_par) == runID,],
+                  tau = tau))
+  if (modelSetting == 2) {
+    res$tau <- tau
+  }
   
   savename <- paste0(Rdata_dir,"_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"_ID_", runID, ".Rdata")
   save(res, input_par, file = savename)

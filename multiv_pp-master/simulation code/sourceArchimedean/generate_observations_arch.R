@@ -21,11 +21,12 @@
 # example_plot(5, "Frank")
 # example_plot(5, "Gumbel")
 
-generate_obs <- function(model, nout, ninit, d, ...){
+generate_obs <- function(model, nout, ninit,  ...){
   require(MASS)
   require(copula)
   require(scatterplot3d)
   
+  d <- list(...)$d
   # check input 
   if(any(!is.numeric(c(nout, ninit, d)))){
     stop("Input 'nout', 'ninit' and 'd' need to be numeric of length 1")
@@ -137,6 +138,37 @@ generate_obs <- function(model, nout, ninit, d, ...){
     
   }
   
+  if (model == 3) {
+    # check if appropriate additional parameters are given
+    input <- list(...)
+    ind_check <- match(c("rho0"), names(input), nomatch = 0)
+    if(ind_check == 0){
+      stop(paste("Missing additional model-specific parameter",
+                 paste("Given input:", paste(names(input), collapse=", ")),
+                 paste("Required input:", paste("rho0", collapse=", ")),
+                 sep="\n")
+      )
+    }
+    
+    # assign additional parameters from input
+    rho0 <- input$rho0
+    
+    # correlation matrix
+    S <- matrix(NA, d, d)
+    for(i in 1:d){
+      for(j in 1:d){
+        S[i,j] <- rho0^(abs(i-j))
+      }
+    }
+    
+    # mean vector
+    mu <- rep(0, d)
+    
+    # observations
+    obs_init <- mvrnorm(n = ninit, mu = mu, Sigma = S)
+    obs <- mvrnorm(n = nout, mu = mu, Sigma = S)
+  }
+  
 
   
   return(list("obs_init" = obs_init, "obs" = obs))
@@ -144,10 +176,10 @@ generate_obs <- function(model, nout, ninit, d, ...){
 
 
 
-example_plot <- function(theta0, copula) {
-  library("car")
-  library("rgl")
-  data <- generate_obs(1, 10000, 1, 3, theta0=theta0, copula= copula)$obs
-  par3d(windowRect = c(20, 30, 800, 800))
-  scatter3d(data[,1],data[,2], data[,3],point.col = "blue", surface=FALSE, size=40)
-}
+# example_plot <- function(theta0, copula) {
+#   library("car")
+#   library("rgl")
+#   data <- generate_obs(1, 10000, 1, 3, theta0=theta0, copula= copula)$obs
+#   par3d(windowRect = c(20, 30, 800, 800))
+#   scatter3d(data[,1],data[,2], data[,3],point.col = "blue", surface=FALSE, size=40)
+# }

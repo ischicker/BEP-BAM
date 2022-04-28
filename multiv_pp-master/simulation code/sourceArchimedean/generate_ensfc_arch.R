@@ -22,8 +22,10 @@
 # generate_ensfc(1, 10, 10, 10, 3, theta=5, copula= "Frank")
 
 
-generate_ensfc <- function(model, nout, ninit, nmembers, d, ...){
+generate_ensfc <- function(model, nout, ninit, nmembers, ...){
   require(MASS)
+  
+  d <- list(...)$d
   
   # check input 
   if(any(!is.numeric(c(nout, ninit, nmembers, d)))){
@@ -143,6 +145,47 @@ generate_ensfc <- function(model, nout, ninit, nmembers, d, ...){
     }
     for(nn in 1:nout){
       tmp <- rMvdc(m, mvDistribution)
+      ensfc[nn,,] <- tmp
+    }
+  }
+  
+  if (model == 3){
+    
+    # check if appropriate additional parameters are given
+    input <- list(...)
+    required <- c("eps", "sigma", "rho")
+    ind_check <- match(required, names(input), nomatch = 0)
+    if(any(ind_check == 0)){
+      stop(paste("Missing additional model-specific parameter",
+                 paste("Given input:", paste(names(input), collapse=", ")),
+                 paste("Required input:", paste(required, collapse=", ")),
+                 sep="\n")
+      )
+    }
+    
+    # assign model-specific parameters from input
+    eps <- input$eps
+    sigma <- input$sigma
+    rho <- input$rho
+    
+    # correlation matrix
+    S <- matrix(NA, d, d)
+    for(i in 1:d){
+      for(j in 1:d){
+        S[i,j] <- sigma*rho^(abs(i-j))
+      }
+    }
+    
+    # mean vector
+    mu <- rep(eps, d)
+    
+    # generate forecasts
+    for(nn in 1:ninit){
+      tmp <- mvrnorm(n = m, mu = mu, Sigma = S)
+      ensfc_init[nn,,] <- tmp
+    }
+    for(nn in 1:nout){
+      tmp <- mvrnorm(n = m, mu = mu, Sigma = S)
       ensfc[nn,,] <- tmp
     }
   }
