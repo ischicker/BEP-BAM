@@ -19,7 +19,8 @@
 #     third dimension: dimension in multivariate setting
 
 # Example calls:
-# generate_ensfc(1, 10, 10, 10, 3, theta=5, copula= "Frank")
+# library(copula)
+# test <- generate_ensfc(1, 10, 10, 10, d = 3, theta=5, copula= "Frank")
 
 
 generate_ensfc <- function(model, nout, ninit, nmembers, ...){

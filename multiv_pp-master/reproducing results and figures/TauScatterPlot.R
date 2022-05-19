@@ -10,7 +10,7 @@ source( "../Settings.R")
 
 setting <- 1
 
-getModelSettings(modelSetting = 2)
+getModelSettings(modelSetting = 3)
 
 fName <- paste0("Archimedean","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"_ID_")
 
@@ -56,13 +56,13 @@ plotTau <- function(fitCopula) {
   }
   p1 <- p1 + geom_abline(intercept = 0, slope = 1, color="grey", 
                     linetype="dashed", size=0.5)
-  p1 <- p1 + facet_grid(rows = vars(input_cop),
-                        labeller = label_bquote(rows = observations: .(as.character(input_cop))))
-  p1 <- p1 + scale_x_continuous(breaks=seq(0,1,0.1)) + scale_y_continuous(breaks=seq(0,1,0.2))
+  p1 <- p1 + facet_grid(cols = vars(input_cop),
+                        labeller = label_bquote(cols = observations: .(as.character(input_cop))))
+  p1 <- p1 + scale_x_continuous(breaks=seq(0,1,0.2)) + scale_y_continuous(breaks=seq(0,1,0.2))
   
   
   p1 <- p1 + theme_bw()
-  p1 <- p1 + xlab(bquote(tau[input])) + ylab(bquote(tau[output]))
+  p1 <- p1 + xlab(bquote(tau[input])) + ylab(bquote(tau[output])) + coord_fixed(ratio=1)
   
   if (fitCopula == "claytonTau") {
     copula <- "Clayton"
@@ -84,7 +84,7 @@ plotTau <- function(fitCopula) {
 plot_folder <- paste0("../Data/Plots/Arch_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"/")
 dir.create(file.path(plot_folder), showWarnings = FALSE)
 
-plotWidth <- 9
+plotWidth <- 12
 plotHeight <- 6
 res <- 400
 

@@ -161,7 +161,11 @@ plotScoresLerch <- function(dfplot, this_score){
     p1 <- p1 + ggtitle(title)
   } 
   if(scval == "vs1"){
-    title <- bquote("Variogram Score,"~sigma==sqrt(5))
+    title <- bquote("Variogram Score (p=1),"~sigma==sqrt(5))
+    p1 <- p1 + ggtitle(title)
+  }
+  if(scval == "vs0"){
+    title <- bquote("Variogram Score (p=0.5),"~sigma==sqrt(5))
     p1 <- p1 + ggtitle(title)
   }
   

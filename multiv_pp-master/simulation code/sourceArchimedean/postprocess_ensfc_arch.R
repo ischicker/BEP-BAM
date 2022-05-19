@@ -34,7 +34,7 @@
 postproc <- function(fcmodel, ensfc, ensfc_init, obs, obs_init, train, trainlength = NULL, emos_plus = FALSE, lower = NULL, upper = NULL){
   require(scoringRules)
   
-  # Setting 1 or 2
+  # Setting 1 or 2 or 3
   if(fcmodel == 1 || fcmodel == 2 || fcmodel == 3){
     
     # extract internal CRPS function for normal distributions
@@ -158,7 +158,7 @@ postproc <- function(fcmodel, ensfc, ensfc_init, obs, obs_init, train, trainleng
         sc <- sqrt(c(1, ensfc_nndd_var) %*% emos_coefs[dd, 3:4])
         emos_param[nn,dd,] <- c(loc, sc)
       }
-    }
+    } 
     
     return(emos_param)
   }

@@ -55,12 +55,12 @@ for (copula in cops) {
 
 p1 <- ggplot(dfplot, aes(x=xvalue, y=yvalue)) + geom_point()
 
-p1 <- p1 + facet_grid(rows = vars(copula),
-                      labeller = label_bquote(rows = copula: .(as.character(copula))))
+p1 <- p1 + facet_grid(cols = vars(copula),
+                      labeller = label_bquote(cols = copula: .(as.character(copula))))
 
 
 p1 <- p1 + theme_bw()
-p1 <- p1 + xlab(bquote(x)) + ylab(bquote(y))
+p1 <- p1 + xlab(bquote(x)) + ylab(bquote(y)) + coord_fixed(ratio=1)
 
 
 fileName <- paste0("../Data/Plots/ArchimedeanPlots.png")
