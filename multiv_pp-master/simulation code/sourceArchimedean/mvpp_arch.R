@@ -63,9 +63,9 @@
 #             obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out)
 
 
+library(copula)
 
-
-mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL, timeWindow){
+mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL, timeWindow, uvpp = NULL){
   
   # include some checks for inputs
   
@@ -237,6 +237,9 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       if(any(!is.null(c(EMOS_sample, variant)))){
         message("'EMOS_sample' and 'variant' input have no effect for Archimedean copulas")
       } 
+      if(is.null(uvpp)){
+        message("'UVPP must be an input")
+      } 
       
       # concatenate obs_init and obs arrays to determine covariance matrix for Gaussian copulas
       obs_all <- rbind(obs_init, obs)
@@ -245,11 +248,22 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         # Use a shifting time window of length obs_init to compute copula parameters
         obs_train <- obs_all[(dim(obs_init)[1]+nn - timeWindow):(dim(obs_init)[1]+nn-1), ]
 
-        
+        d <- dim(obs_train)[2]
         # The input for the copulas are the CDF values of the margins
         obs_train_CDF <- c()
-        for (i in 1:dim(obs_train)[2]) {
-          obs_train_CDF <- cbind(obs_train_CDF, pnorm(obs_train[,i], mean = 0, sd = 1))
+        mean_vector <- c()
+        sd_vector <- c()
+        for (i in 1:d) {
+          # Use EMOS values for marginals
+          dat <- subset(uvpp, stat == i)
+          averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+          averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+          
+          obs_train_CDF <- cbind(obs_train_CDF, pnorm(obs_train[,i], mean = averagedMean, sd = averagedSd))
+          
+          # Add for later use
+          mean_vector <- c(mean_vector, averagedMean)
+          sd_vector <- c(sd_vector, averagedSd)
         }
         
         # Estimate the parameter and copula - itau method does not converge for some cases (without giving a warning/ error and runs indefinitely)
@@ -258,6 +272,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
           fitcop <-tryCatch({
             fitCopula(claytonCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1,optim.control = list(maxit=1000), upper = 100)
           }, error = function(e) {
+              # print(e)
               indepCopula(dim=d)
           })
         }
@@ -265,6 +280,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
           fitcop <-tryCatch({
             fitCopula(frankCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1,optim.control = list(maxit=1000), upper = 100)
           }, error = function(e) {
+            # print(e)
             indepCopula(dim=d)
           })
         }
@@ -272,6 +288,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
           fitcop <-tryCatch({
             fitCopula(gumbelCopula(dim = d), data = obs_train_CDF, method="mpl", start = 1,optim.control = list(maxit=1000), upper = 100)
           }, error = function(e) {
+            # print(e)
             indepCopula(dim=d)
           })
         } else {
@@ -281,12 +298,13 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         if (!(class(fitcop) == "indepCopula")){
           cop <- fitcop@copula
           indep[nn] <- FALSE
+          # print("SUCCESS")
         
           # Save the fitted parameter
           params[nn] <- fitcop@estimate
         } else {
           indep[nn] <- TRUE
-          print("Using indep copula")
+          # print("Using indep copula")
           cop <- fitcop
         }
         
@@ -294,26 +312,34 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         paramMargins <- list()
         
         for (i in 1:d){
-          paramMargins[[i]] <- list(mean = 0, sd = 1)
+          paramMargins[[i]] <- list(mean = mean_vector[i], sd = sd_vector[i])
         }
+        # .GlobalEnv$paramMargins <- paramMargins
+        # .GlobalEnv$mean_vector <- mean_vector
+        # .GlobalEnv$sd_vector <- sd_vector
         
         # Generate observations with standard normal marginals
         mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
                                paramMargins=paramMargins)
         
+        .GlobalEnv$dist <- mvDistribution
         
         # Make sure to get numeric values
+        max_reps <- 2
+        rep <- 0
         repeat {
+          rep <- rep + 1
           # Dependence structure by Copula
           mvsample <- rMvdc(m, mvDistribution)
           
-          if (all(is.finite(mvsample))) {
+          if (all(is.finite(mvsample)) | rep >= max_reps) {
             break
           }
           
           set.seed(sample(1:1000,1))
           
-          print("Repeating...2")
+          # print(rep)
+          # print("Repeating...2")
         }
         
         for(dd in 1:d){

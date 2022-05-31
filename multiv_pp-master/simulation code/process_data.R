@@ -1,14 +1,3 @@
-rm(list=ls())
-
-library(ggplot2)
-library(ggpubr)
-library(purrr)
-library(qqplotr)
-
-setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/simulation code")
-fName <- "INPUT-DATA_temp_2013071000-2016033000"
-load(paste0("../../Data/", fName, ".Rdata")) # loads data in "input" variable
-
 ### Input consists of
 # 72 different lead times
 # 216 stations (input$leadtimen consists of the stations)
@@ -21,37 +10,26 @@ load(paste0("../../Data/", fName, ".Rdata")) # loads data in "input" variable
 # inca (Integrated Nowcasting through Comprehensive Analyses) contains the observations
 # cosmo (Consortium for Small-scale Modeling) another forecast
 
-# Focus on one specific lead time
-leadTime <- 12
-data <- input[[paste0("leadtime", leadTime)]]
+rm(list=ls())
 
-# Time format is YYYYMMDD00 and is converted to Date object
-data$time <- as.Date(sapply(data$initial, FUN = function(x) substr(toString(x), start = 1, stop = 8)), "%Y%m%d")
-
-#vector of all distinct stations
-statNR <-  unique(input$leadtime1$stat) 
+library(ggplot2)
+library(ggpubr)
+library(purrr)
+library(qqplotr)
 
 
-# Groups in Perrone et al. 2020 are:
-# group 1: stations 188 - 189 - 191
-# group 2: stations 64 - 169 - 188
-# group 3: stations 19 - 150 - 172
-group1 <- c(188, 189, 191)
-group2 <- c(64, 169, 188)
-group3 <- c(19, 150, 172)
+# "source" directory 
+setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/simulation code")
+source("getData.R")
+getData()
 
-# Select the data for those groups
-data1_comp <- subset(data, stat %in% statNR[group1])
-data2_comp <- subset(data, stat %in% statNR[group2])
-data3_comp <- subset(data, stat %in% statNR[group3])
 
-# Remove unnecessary data from memory
-rm(input, data)
+
 
 ## Create a grid of histograms of ensemble members
 
 # Number of ensemble members
-m <- sum(grepl("laef", names(data1_comp)))
+m <- sum(grepl("laef", names(data1)))
 
 # Plots are put in a grid
 cols <- 6
@@ -61,7 +39,8 @@ ensembleMembers <- sapply(1:m, FUN = function(x) paste0("laef", x))
 
 
 # Save settings
-plot_folder <- paste0("../Data/Plots/", fName, "/")
+saveFolder <- "Combined_LAEF_Data"
+plot_folder <- paste0("../Data/Plots/", saveFolder, "/")
 dir.create(file.path(plot_folder), showWarnings = FALSE)
 dir.create(file.path(paste0(plot_folder, "Month/")), showWarnings = FALSE)
 plotWidth <- cols * 4
@@ -80,7 +59,7 @@ savePlots <- function(fileName, plot) {
 }
 
 ## Investigate temporal dependence of data for one particular station
-seasonData <- subset(data1_comp, stat %in% statNR[group1[1]])
+seasonData <- subset(data1, stat %in% statNR[group1[1]])
 
 # Create plots for T over time
 createSeasonPlots <- function(data) {
@@ -95,19 +74,10 @@ createSeasonPlots <- function(data) {
 }
 
 # Get the plots
-seasonPlot1 <- createSeasonPlots(data1_comp)
-seasonPlot2 <- createSeasonPlots(data2_comp)
-seasonPlot3 <- createSeasonPlots(data3_comp)
+seasonPlot1 <- createSeasonPlots(data1)
+seasonPlot2 <- createSeasonPlots(data2)
+seasonPlot3 <- createSeasonPlots(data3)
 
-# From the plots, it seems that proper forecasts start only after 2014
-data1 <- subset(data1_comp, initial >= 2014010100)
-data2 <- subset(data2_comp, initial >= 2014010100)
-data3 <- subset(data3_comp, initial >= 2014010100)
-
-# Get data from single month to account for seasonal differences
-data1month <- subset(data1, initial < 2014020100)
-data2month <- subset(data2, initial < 2014020100)
-data3month <- subset(data3, initial < 2014020100)
 
 # Create histograms
 createHistPlots <- function(data){

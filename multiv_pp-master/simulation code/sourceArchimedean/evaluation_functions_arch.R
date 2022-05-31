@@ -30,6 +30,8 @@
 # output:
 #   vector of scores (length = nout)
 
+library(scoringRules)
+
 es_wrapper <- function(mvpp_out, obs){
   n <- dim(mvpp_out)[1]
   out <- vector(length = n)

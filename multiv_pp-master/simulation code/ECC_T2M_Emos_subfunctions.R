@@ -22,7 +22,7 @@
 setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/simulation code")
 source("emos_T2M_mean_singleForecast_subfunctions-orig.R")
 
-emos_T2M_mean_singleForecast<-function(data.lt){
+emos_T2M_mean_singleForecast<-function(data.lt, trainingDays){
    
    data.lt$ensmean <-   apply(data.lt[,grep('^laef',names(data.lt))],1,mean)
    data.lt$enssd <-     apply(data.lt[,grep('^laef',names(data.lt))],1,sd)
@@ -34,7 +34,8 @@ emos_T2M_mean_singleForecast<-function(data.lt){
    # ALADIN-LAEF has 17 ensemble members, which are in data.lt[, 7:23]
    # the observations are stored in data.lt[,6]
    
-   td.emos<-50 #training days
+   # Could be 50 --> pick same for mvpp
+   td.emos<- trainingDays #training days
    npred <-1
 
    # model estimation

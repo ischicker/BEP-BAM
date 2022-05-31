@@ -36,14 +36,15 @@ for (copula in cops) {
   }
   
   paramMargins <- list()
-  
+
   for (i in 1:d){
-    paramMargins[[i]] <- list(mean = 0, sd = 1)
+    paramMargins[[i]] <- list(min = 0, max = 1)
   }
   
   # Generate observations with standard normal marginals
-  mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
+  mvDistribution <- mvdc(copula=cop, margins=rep("unif", d),
                          paramMargins=paramMargins)
+
   
   # Random sample from the mvdc
   obs <- rMvdc(n, mvDistribution)
