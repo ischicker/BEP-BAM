@@ -214,9 +214,9 @@ binNumber <- function(values, obs) {
 }
 
 # Get list of bin numbers divided by number
-binVector <- function(data) {
+binVector <- function(dat) {
   return(
-    apply(data[c(ensembleMembers, "inca")], MARGIN = 1, FUN = function(x) {
+    apply(dat[c(ensembleMembers, "obs")], MARGIN = 1, FUN = function(x) {
     if (!any(is.na(x))) {
       ensembleVector <- x[1:m]
       return(binNumber(ensembleVector, x[m+1]))
@@ -233,11 +233,11 @@ data3$bin <- binVector(data3)
 
 
 # Create the PIT plots
-createPIT <- function(data) {
-  nonNANumber <- sum(!is.na(data$bin))
+createPIT <- function(dat) {
+  nonNANumber <- sum(!is.na(dat$bin))
   height <- nonNANumber / (m + 1)
-  highestValue <- max(sapply(1:(m+1), FUN = function(x) length(data$bin[data$bin == x])))
-  p <- ggplot(data, aes(x=bin)) + geom_histogram(breaks = seq(0, m + 1, 1)) +
+  highestValue <- max(sapply(1:(m+1), FUN = function(x) length(dat$bin[dat$bin == x])))
+  p <- ggplot(dat, aes(x=bin)) + geom_histogram(breaks = seq(0, m + 1, 1)) +
     geom_hline(yintercept = height, col="steelblue", linetype = "dashed") + 
     scale_x_continuous(breaks = seq(0, m + 1, 1), labels=round(seq(0, m + 1, 1)/ (m + 1), 2)) + 
     scale_y_continuous(breaks = seq(0, highestValue, height), labels = seq(0, highestValue / height, 1)) +
@@ -248,7 +248,22 @@ createPIT <- function(data) {
 
 # Save the plots
 savePlots("PIT_group_1.png",createPIT(data1))
-savePlots("PIT_group_2.png",createPIT(data2))
 savePlots("PIT_group_3.png",createPIT(data3))
 
+stations1 <- unique(data1$stat)
+for (s in 1:length(stations1)) {
+  print(s)
+  savePlots(paste0("PIT_group_1_d_",s,".png"),createPIT(subset(data1, stat == stations1[s])))
+}
 
+stations2 <- unique(data2$stat)
+for (s in 1:length(stations2)) {
+  print(s)
+  savePlots(paste0("PIT_group_2_d_",s,".png"),createPIT(subset(data2, stat == stations2[s])))
+}
+
+stations3 <- unique(data3$stat)
+for (s in 1:length(stations3)) {
+  print(s)
+  savePlots(paste0("PIT_group_3_d_",s,".png"),createPIT(subset(data3, stat == stations3[s])))
+}

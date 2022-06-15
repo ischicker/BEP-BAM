@@ -1,4 +1,4 @@
-rm(list=ls())
+# rm(list=ls())
 
 library(ggplot2)
 library(ggpubr)
@@ -85,8 +85,12 @@ for (model in mvpp_approaches) {
 
 
 # Create the PIT plots
-createPIT <- function(model, i.d) {
-  dat <- res$bin_list[[model]][,i.d]
+createPIT <- function(model, oneDim = FALSE, i.d=-1) {
+  if (oneDim) {
+    dat <- res$bin_list[[model]][,i.d]
+  } else {
+    dat <- c(res$bin_list[[model]])
+  }
   nonNANumber <- sum(!is.na(dat))
   height <- nonNANumber / (m + 1)
   highestValue <- max(sapply(1:(m+1), FUN = function(x) length(dat[dat == x])))
@@ -94,8 +98,13 @@ createPIT <- function(model, i.d) {
     geom_hline(yintercept = height, col="steelblue", linetype = "dashed") + 
     scale_x_continuous(breaks = seq(0, m + 1, 1), labels=round(seq(0, m + 1, 1)/ (m + 1), 2)) + 
     scale_y_continuous(breaks = seq(0, highestValue, height), labels = seq(0, highestValue / height, 1)) +
-    labs(y = "Frequency ratio", x = "PIT value") +
-    ggtitle(paste0(model," for d = ", i.d)) + theme(plot.title = element_text(hjust = 0.5))
+    labs(y = "Frequency ratio", x = "PIT value")
+  
+  if (oneDim) {
+    p <- p + ggtitle(paste0(model," for d = ", i.d)) + theme(plot.title = element_text(hjust = 0.5))
+  } else {
+    p <- p + ggtitle(model) + theme(plot.title = element_text(hjust = 0.5))
+  }
   
   return(p)
 }
@@ -105,7 +114,7 @@ rows <- 3
 
 
 
-# Create and save the PIT plots
+# Create and save the One Dimensional PIT plots
 for (i.d in 1:d) {
   plot_vec <- c()
   plotWidth <-  8
@@ -121,6 +130,21 @@ for (i.d in 1:d) {
   savePlots(paste0("PIT_group_", groupNR, "_grid_d_",i.d,".png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
 }
 
+# Create and save the Multivariate PIT plots
+plot_folder <- paste0("../Data/Plots/Group ", groupNR, "/Multivariate/")
+dir.create(file.path(plot_folder), showWarnings = FALSE)
+plot_vec <- c()
+plotWidth <-  8
+plotHeight <- 8
+for (model in mvpp_approaches) {
+  plot <- createPIT(model)
+  plot_vec <- c(plot_vec, list(plot))
+  # Save the plots
+  savePlots(paste0("PIT_group_", groupNR, "_", model,"_multivariate.png"), plot)
+}
+plotWidth <-  5 * cols
+plotHeight <- 5 * rows
+savePlots(paste0("PIT_group_", groupNR, "_grid_multivariate.png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
 
 
 

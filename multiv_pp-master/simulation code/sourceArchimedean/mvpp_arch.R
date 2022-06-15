@@ -64,7 +64,7 @@
 
 
 library(copula)
-
+options(digits = 20)
 mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL, timeWindow, uvpp = NULL){
   
   # include some checks for inputs
@@ -201,28 +201,64 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
     obs_all <- rbind(obs_init, obs)
     
     for(nn in 1:n){
+      
       # Only last measurements
       obs_train <- obs_all[(dim(obs_init)[1]+nn - timeWindow):(dim(obs_init)[1]+nn-1), ]
-      # estimate covariance matrix
-      cov_obs <- cov(obs_train)
-      # draw random sample from multivariate normal distribution with this covariance matrix
-      # Make sure to get numeric values
-      repeat {
-        # Dependence structure by Copula
-        mvsample <- mvrnorm(n = m, mu = rep(0,d), Sigma = cov_obs)
-        
-        if (all(is.finite(mvsample))) {
-          break
-        }
-        set.seed(sample(1:1000,1))
-        print("Repeating...1")
+      
+      # print(dim(obs_init))
+      
+      # Latent Gaussian observations
+      obs_latent_gaussian <- array(NA, dim = c(timeWindow, d))
+      for(dd in 1:d){
+        dat <- subset(uvpp, stat == dd)
+        averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+        # print(averagedMean)
+        averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+        # print(averagedSd)
+        obs_latent_gaussian[,dd] <- qnorm(pnorm(obs_train[,dd], mean = averagedMean, sd = averagedSd))
       }
       
-      # impose dependence structure on post-processed forecasts
-      for(dd in 1:d){
-        par <- postproc_out[nn, dd, ]
-        # Using log=T to capture outliers (that otherwise get an infinite value)
-        mvppout[nn, , dd] <- qnorm(pnorm(mvsample[, dd], log=T), mean = par[1], sd = par[2],log=T)
+      # print(obs_train)
+      # print(obs_latent_gaussian)
+      
+      
+      try({
+      
+        # estimate covariance matrix
+        cov_obs <- cov(obs_latent_gaussian)
+        # draw random sample from multivariate normal distribution with this covariance matrix
+        # Make sure to get numeric values
+        
+        
+        repeat {
+          # Dependence structure by Copula
+          mvsample <- mvrnorm(n = m, mu = rep(0,d), Sigma = cov_obs)
+          
+          if (all(is.finite(mvsample))) {
+            break
+          }
+          set.seed(sample(1:1000,1))
+          print("Repeating...1")
+        }
+        
+        # impose dependence structure on post-processed forecasts
+        for(dd in 1:d){
+          dat <- subset(uvpp, stat == dd)
+          averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+          averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+          # Using log=T to capture outliers (that otherwise get an infinite value)
+          temp <- qnorm(pnorm(mvsample[, dd]), mean = averagedMean, sd = averagedSd)
+          if (all(is.finite((temp)))) {
+            mvppout[nn, , dd] <- temp
+          } else {
+            mvppout[nn, , dd] <- ensfc[nn, , dd]
+          }
+        }
+      })
+      a <- ensfc[nn, ,] # Should the procedures not work
+      b <- mvppout[nn, ,]  
+      if (any(is.na(b)) || any(is.infinite(b))) {
+        mvppout[nn, ,] <- a
       }
     }
     

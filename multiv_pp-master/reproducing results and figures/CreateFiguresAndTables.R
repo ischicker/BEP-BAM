@@ -154,7 +154,7 @@ mst.rhist <- function(B,reps=10000,hist_xlab="",hist_ylab="",hist_ylim=NULL)
 # 
 # png(file="../images/sd0_5.png",width=8,height=2,points=12)
 # par(mfrow=c(2,4),mex=0.5,mar=c(2.7,2.7,0.1,0.1)+0.1,mgp=c(0.5,0,0))
-# B <- create.norm.data(d=0,knots=5,r=0.5)
+B <- create.norm.data(d=0,knots=5,r=0.5)
 # mrh.rhist(B,hist_ylab="d = 5")
 # avg.rhist(B)
 # bd.rhist(B)

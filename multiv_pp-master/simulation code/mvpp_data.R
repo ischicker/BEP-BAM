@@ -323,7 +323,7 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   for(RR in 1:rand_rep){
     start_time <- Sys.time()
     gca <- mvpp(method = "GCA", ensfc = ensfc, ensfc_init = ensfc_init,
-                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow)
+                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, uvpp = uvpp)
 
     crps_list_tmp[,,RR] <- crps_wrapper(gca$mvppout, obs)
     tmp <- eval_all_mult(mvpp_out = gca$mvppout, obs = obs)

@@ -8,7 +8,7 @@ setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_p
 
 source("../Settings.R")
 
-getModelSettings(modelSetting = 3)
+getModelSettings(modelSetting = 2)
 
 setting <- 1
 
@@ -116,15 +116,20 @@ plotScoresTau <- function(dfplot, cop, this_score, isAverage){
   }
   
   scval <- strsplit(this_score, split = "_")[[1]][1]
+  print(scval)
   if(scval == "es"){ 
     title <- paste("Energy Score for",cop,"copula")
     p1 <- p1 + ggtitle(title)
   } 
   if(scval == "vs1"){
-    title <- paste("Variogram Score for",cop,"copula")
+    title <- paste("Variogram Score (p=1) for",cop,"copula")
     p1 <- p1 + ggtitle(title)
   }
-  
+  if(scval == "vs0"){
+    title <- paste("Variogram Score (p=0.5) for",cop,"copula")
+    # print(title)
+    p1 <- p1 + ggtitle(title)
+  }
   
   p1 <- p1 + theme_bw() + theme(legend.position = "bottom")
   p1 <- p1 + xlab("Model") + ylab("DM test statistic") 
