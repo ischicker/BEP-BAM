@@ -54,7 +54,7 @@ dir.create(file.path(plot_folder), showWarnings = FALSE)
 dfplot <- subset(dfplot, input != "emos.q")
 
 
-mypal <- colorspace::rainbow_hcl(12)
+mypal <- colorspace::rainbow_hcl(13)
 mypal_use <- c("obs" = mypal[1],
                "fc" = mypal[2],
                "uvpp" = mypal[3],
@@ -64,16 +64,17 @@ mypal_use <- c("obs" = mypal[1],
                "ecc.s" = mypal[7],
                "gca" = mypal[8],
                "ssh" = mypal[9],
-               "clayton" = mypal[10],
-               "frank" = mypal[11],
-               "gumbel" = mypal[12])
+               "Clayton" = mypal[10],
+               "Frank" = mypal[11],
+               "Gumbel" = mypal[12],
+               "GOF" = mypal[13])
 
 
 
-time_obs <- c("Observations", "Forecast", "UVPP", "Ens", "dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel")
+time_obs <- c("Observations", "Forecast", "UVPP", "Ens", "dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel", "GOF")
 
 dfplot$input <- factor(dfplot$input, levels = 
-                         c("obs", "fc", "uvpp", "ens", "decc.q", "ecc.q", "ecc.s", "gca", "ssh", "clayton", "frank", "gumbel"))
+                         c("obs", "fc", "uvpp", "ens", "decc.q", "ecc.q", "ecc.s", "gca", "ssh", "Clayton", "Frank", "Gumbel", "GOF"))
 
 
 p1 <- ggplot(dfplot, aes(x = input, y = value, colour = input))
@@ -93,7 +94,7 @@ p1 <- p1 + scale_x_discrete(label = time_obs)+
 
 plotWidth <- 9
 plotHeight <- 6
-res <- 400
+res <- 250
 fileName <- paste0("Arch_Times","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png")
 
 ggsave(

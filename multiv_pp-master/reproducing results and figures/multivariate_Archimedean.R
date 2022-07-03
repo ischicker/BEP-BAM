@@ -8,7 +8,7 @@ setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_p
 
 source("../Settings.R")
 
-getModelSettings(modelSetting = 2)
+getModelSettings(modelSetting = 1)
 
 setting <- 1
 
@@ -34,18 +34,19 @@ df1 <- subset(df1_save, model != "ens")
 # also drop EMOS.Q
 df2 <- subset(df1, model != "emos.q")
 
-mypal <- colorspace::rainbow_hcl(8)
+mypal <- colorspace::rainbow_hcl(9)
 mypal_use <- c("decc.q" = mypal[1],
                "ecc.q" = mypal[2],
                "ecc.s" = mypal[3],
                "gca" = mypal[4],
                "ssh" = mypal[5],
-               "clayton" = mypal[6],
-               "frank" = mypal[7],
-               "gumbel" = mypal[8])
+               "Clayton" = mypal[6],
+               "Frank" = mypal[7],
+               "Gumbel" = mypal[8],
+               "GOF" = mypal[9])
 
-df2$model <- factor(df2$model, levels = c("decc.q", "ecc.q", "ecc.s", "gca", "ssh", "clayton", "frank", "gumbel"))
-model_vec <- c("dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel")
+df2$model <- factor(df2$model, levels = c("decc.q", "ecc.q", "ecc.s", "gca", "ssh", "Clayton", "Frank", "Gumbel", "GOF"))
+model_vec <- c("dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel", "GOF")
 
 ylimitFunc <- function(val1, val2) {
   return(1.5 * max(abs(val1), abs(val2)))
@@ -81,6 +82,10 @@ plotScores <- function(dfplot, cop, this_score){
   } 
   if(scval == "vs1"){
     title <- paste("Variogram Score for",cop,"copula")
+    p1 <- p1 + ggtitle(title)
+  }
+  if(scval == "vs0"){
+    title <- paste("Variogram Score (p=0.5) for",cop,"copula")
     p1 <- p1 + ggtitle(title)
   }
   
@@ -183,7 +188,7 @@ plotScoresLerch <- function(dfplot, this_score){
 }
 
 saveFigure <- function(fileName, fig) {
-  res <- 400
+  res <- 250
   
   ggsave(
     paste0(plot_folder, fileName),
@@ -202,7 +207,7 @@ dfplot <- subset(df2, score == this_score)
 if (observationsModel == 1) {
   
   plotWidth <- 9
-  plotHeight <- 6 * max(dfplot$repetition)
+  plotHeight <- 6
 
   dfplot$equalThetas <- (dfplot$theta0 == dfplot$theta)
   # Get the plots
@@ -255,15 +260,15 @@ if (observationsModel == 1) {
 
 
 
-if (observationsModel == 1) {
-  ### Join the plots
-  
-  library(gridExtra)
-  plotWidth <- 9
-  plotHeight <- 25 * max(dfplot$repetition)
-  saveFigure(paste0("Arch_ES_Combined","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"), grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1))
-  print("Finished combined plots ES")
-}
+# if (observationsModel == 1) {
+#   ### Join the plots
+#   
+#   library(gridExtra)
+#   plotWidth <- 9
+#   plotHeight <- 25
+#   saveFigure(paste0("Arch_ES_Combined","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"), grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1))
+#   print("Finished combined plots ES")
+# }
 ## VS
 
 this_score <- "vs0_list"
@@ -274,7 +279,7 @@ dfplot <- subset(df2, score == this_score)
 if (observationsModel == 1) {
   
   plotWidth <- 9
-  plotHeight <- 6 * max(dfplot$repetition)
+  plotHeight <- 6
   
   dfplot$equalThetas <- (dfplot$theta0 == dfplot$theta)
   # Get the plots
@@ -329,11 +334,11 @@ if (observationsModel == 1) {
   saveFigure(paste0("Lerch_VS","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"),p1)
 }
 
-if (observationsModel == 1) {
-  ### Join the plots
-  
-  plotWidth <- 9
-  plotHeight <- 25 * max(dfplot$repetition)
-  saveFigure(paste0("Arch_VS_Combined","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"), grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1))
-  print("Finished combined plots VS")
-}
+# if (observationsModel == 1) {
+#   ### Join the plots
+#   
+#   plotWidth <- 9
+#   plotHeight <- 25 
+#   saveFigure(paste0("Arch_VS_Combined","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,".png"), grid.arrange(p1saveClayton,p1saveFrank,p1saveGumbel, ncol = 1))
+#   print("Finished combined plots VS")
+# }

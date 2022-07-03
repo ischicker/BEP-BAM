@@ -54,8 +54,8 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   ensembleMembers <- sapply(1:m, FUN = function(x) paste0("laef", x))
   
   # generate objects to save scores to
-  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca","clayton","frank","gumbel")
-  crps_list <- es_list <- vs1_list <- vs1w_list <- vs0_list <- vs0w_list <- mvpp_list <- list()
+  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca","Clayton","Frank","Gumbel", "GOF")
+  crps_list <- es_list <- vs1_list <- vs1w_list <- vs0_list <- vs0w_list <- mvpp_list <- chosenCopula_list <- list()
   
   # Timing_list stores the time needed to do all relevant computations
   timing_list <- list()
@@ -64,10 +64,10 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
     es_list[[mm]] <- vs1_list[[mm]] <- vs1w_list[[mm]] <- 
       vs0_list[[mm]] <- vs0w_list[[mm]] <- matrix(NA, nrow = 1, ncol = nout) 
     crps_list[[mm]] <- array(NA, dim = c(nout, d))
-    timing_list[[mm]] <- array(NA, dim = 1) 
+    timing_list[[mm]] <- chosenCopula_list[[mm]] <- array(NA, dim = 1) 
   }
   names(crps_list) <- names(es_list) <- names(vs1_list) <- names(vs1w_list) <- 
-    names(vs0_list) <- names(vs0w_list) <- names(timing_list) <- modelnames
+    names(vs0_list) <- names(vs0w_list) <- names(timing_list) <- names(chosenCopula_list) <- modelnames
   
 
 
@@ -167,12 +167,12 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   vs0_list$ens <- tmp$vs0
   vs0w_list$ens <- tmp$vs0w
   
-  .GlobalEnv$uvpp <- uvpp
-  .GlobalEnv$pp_out <- pp_out
-  .GlobalEnv$obs_init <- obs_init
-  .GlobalEnv$obs <- obs
-  .GlobalEnv$ensfc_init <- ensfc_init
-  .GlobalEnv$ensfc <- ensfc
+  # .GlobalEnv$uvpp <- uvpp
+  # .GlobalEnv$pp_out <- pp_out
+  # .GlobalEnv$obs_init <- obs_init
+  # .GlobalEnv$obs <- obs
+  # .GlobalEnv$ensfc_init <- ensfc_init
+  # .GlobalEnv$ensfc <- ensfc
   
   mvpp_list$ens <- ensfc
   
@@ -348,65 +348,37 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   mvpp_list$gca <- gca$mvppout
 
   # Archimedean copulas -> involves randomness -> repeat rand_rep times
-  for (method in c("Clayton","Frank", "Gumbel")) {
+  for (method in c("Clayton","Frank", "Gumbel", "GOF")) {
     print(method)
-    es_list_tmp <- vs1_list_tmp <- vs1w_list_tmp <-
-      vs0_list_tmp <- vs0w_list_tmp  <- matrix(NA, nrow = nout, ncol = rand_rep)
-    crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
-    timing_list_tmp <- array(NA, dim = rand_rep)
-    for(RR in 1:rand_rep){
-      start_time <- Sys.time()
-      mvd <- mvpp(method = method, ensfc = ensfc, ensfc_init = ensfc_init,
-                  obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, uvpp = uvpp)
+
+
       
-      .GlobalEnv$mvd <- mvd
-      
-      good_rows <- !unname(apply(mvd$mvppout, MARGIN = 1, FUN = function(x) any(is.na(x))))
-      score_mvppout <- mvd$mvppout[good_rows,,]
-      score_obs <- obs[good_rows,]
+    start_time <- Sys.time()
+    mvd <- mvpp(method = method, ensfc = ensfc, ensfc_init = ensfc_init,
+                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, uvpp = uvpp)
+    
+    chosenCopula_list[[method]] <- mvd$chosenCopula
+    
+    good_rows <- !unname(apply(mvd$mvppout, MARGIN = 1, FUN = function(x) any(is.na(x))))
+    score_mvppout <- mvd$mvppout[good_rows,,]
+    score_obs <- obs[good_rows,]
 
-      crps_list_tmp[good_rows,,RR] <- crps_wrapper(score_mvppout, score_obs)
-      tmp <- eval_all_mult(mvpp_out = score_mvppout, obs = score_obs)
-      es_list_tmp[good_rows,RR] <- tmp$es
-      vs1_list_tmp[good_rows,RR] <- tmp$vs1
-      vs1w_list_tmp[good_rows,RR] <- tmp$vs1w
-      vs0_list_tmp[good_rows,RR] <- tmp$vs0
-      vs0w_list_tmp[good_rows,RR] <- tmp$vs0w
+    crps_list[[method]][good_rows,] <- crps_wrapper(score_mvppout, score_obs)
+    tmp <- eval_all_mult(mvpp_out = score_mvppout, obs = score_obs)
+    es_list[[method]][good_rows] <- tmp$es
+    vs1_list[[method]][good_rows] <- tmp$vs1
+    vs1w_list[[method]][good_rows] <- tmp$vs1w
+    vs0_list[[method]][good_rows] <- tmp$vs0
+    vs0w_list[[method]][good_rows] <- tmp$vs0w
+    
+    mvpp_list[[method]] <- mvd$mvppout
+
+    end_time <- Sys.time()
+
+    timing_list[[method]] <- end_time - start_time
 
 
-      end_time <- Sys.time()
 
-      timing_list_tmp[RR] <- end_time - start_time
-    }
-
-    if (method == "Clayton") {
-      crps_list$clayton <- apply(crps_list_tmp, c(1,2), mean)
-      es_list$clayton <- apply(es_list_tmp, 1, mean)
-      vs1_list$clayton <- apply(vs1_list_tmp, 1, mean)
-      vs1w_list$clayton <- apply(vs1w_list_tmp, 1, mean)
-      vs0_list$clayton <- apply(vs0_list_tmp, 1, mean)
-      vs0w_list$clayton <- apply(vs0w_list_tmp, 1, mean)
-      timing_list$clayton <- apply(timing_list_tmp, 1, mean)
-      mvpp_list$clayton <- mvd
-    } else if (method == "Frank") {
-      crps_list$frank <- apply(crps_list_tmp, c(1,2), mean)
-      es_list$frank <- apply(es_list_tmp, 1, mean)
-      vs1_list$frank <- apply(vs1_list_tmp, 1, mean)
-      vs1w_list$frank <- apply(vs1w_list_tmp, 1, mean)
-      vs0_list$frank <- apply(vs0_list_tmp, 1, mean)
-      vs0w_list$frank <- apply(vs0w_list_tmp, 1, mean)
-      timing_list$frank <- apply(timing_list_tmp, 1, mean)
-      mvpp_list$frank <- mvd
-    } else if (method == "Gumbel") {
-      crps_list$gumbel <- apply(crps_list_tmp, c(1,2), mean)
-      es_list$gumbel <- apply(es_list_tmp, 1, mean)
-      vs1_list$gumbel <- apply(vs1_list_tmp, 1, mean)
-      vs1w_list$gumbel <- apply(vs1w_list_tmp, 1, mean)
-      vs0_list$gumbel <- apply(vs0_list_tmp, 1, mean)
-      vs0w_list$gumbel <- apply(vs0w_list_tmp, 1, mean)
-      timing_list$gumbel <- apply(timing_list_tmp, 1, mean)
-      mvpp_list$gumbel <- mvd
-    }
   }
   
   
@@ -414,15 +386,15 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   # return results, as a huge list
   out <- list("crps_list" = crps_list, "es_list" = es_list, "vs1_list" = vs1_list,
               "vs1w_list" = vs1w_list, "vs0_list" = vs0_list, "vs0w_list" = vs0w_list, 
-              "timing_list" = timing_list, "mvpp_list" = mvpp_list, "obs" = obs)
+              "timing_list" = timing_list, "mvpp_list" = mvpp_list, "chosenCopula_list" = chosenCopula_list,"obs" = obs)
   return(out)
 }
 traininDays <- 30
 saveDir <- "./../Data/Rdata_LAEF/"
 
-res <- run_processing(data1, traininDays, progress_ind = TRUE)
-savename <- paste0(saveDir, "Res_group_1", ".Rdata")
-save(res, file = savename)
+# res <- run_processing(data1, traininDays, progress_ind = TRUE)
+# savename <- paste0(saveDir, "Res_group_1", ".Rdata")
+# save(res, file = savename)
 
 res <- run_processing(data2, traininDays, progress_ind = TRUE)
 savename <- paste0(saveDir, "Res_group_2", ".Rdata")

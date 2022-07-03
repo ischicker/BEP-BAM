@@ -10,7 +10,7 @@ source( "../Settings.R")
 
 setting <- 1
 
-getModelSettings(modelSetting = 3)
+getModelSettings(modelSetting = 2)
 
 fName <- paste0("Archimedean","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"_ID_")
 
@@ -34,10 +34,11 @@ df <- list(frankFit = df$param_list$frank, gumbelFit = df$param_list$gumbel, cla
 dfplot <- data.frame()
 
 for(ID in existing[!is.na(existing)]){
+  print(ID)
   load(paste0("../Data/Rdata/", fName, ID,".Rdata"))
-  res$frankTau <- sapply(res$param_list$frank, FUN = paramToTau, copula = "Frank")
-  res$gumbelTau <- sapply(res$param_list$gumbel, FUN = paramToTau, copula = "Gumbel")
-  res$claytonTau <- sapply(res$param_list$clayton, FUN = paramToTau, copula = "Clayton") 
+  res$frankTau <- sapply(res$param_list$Frank, FUN = paramToTau, copula = "Frank")
+  res$gumbelTau <- sapply(res$param_list$Gumbel, FUN = paramToTau, copula = "Gumbel")
+  res$claytonTau <- sapply(res$param_list$Clayton, FUN = paramToTau, copula = "Clayton") 
   
   new_df <- data.frame(claytonTau = res$claytonTau, frankTau = res$frankTau, gumbelTau = res$gumbelTau, 
                        tau = rep(res$tau, length(res$frankTau)), input_cop = input_par$copula[ID])
@@ -62,7 +63,7 @@ plotTau <- function(fitCopula) {
   
   
   p1 <- p1 + theme_bw()
-  p1 <- p1 + xlab(bquote(tau[input])) + ylab(bquote(tau[output])) + coord_fixed(ratio=1)
+  p1 <- p1 + xlab(bquote(tau[input])) + ylab(bquote(tau[output])) + coord_fixed(ratio=1, xlim=c(0,1),ylim=c(0,1))
   
   if (fitCopula == "claytonTau") {
     copula <- "Clayton"

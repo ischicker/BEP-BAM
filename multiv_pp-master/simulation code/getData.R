@@ -102,7 +102,7 @@ getData <- function() {
   data2 <- cleanup(data2)
   data3 <- cleanup(data3)
   
-  
+  .GlobalEnv$statNR <- statNR
   
   .GlobalEnv$group1 <- group1
   .GlobalEnv$group2 <- group2

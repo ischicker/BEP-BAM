@@ -5,7 +5,7 @@ library(gridExtra)
 
 setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
 
-groupNR <- 2
+groupNR <- 3
 fName <- paste0("Res_group_", groupNR)
 load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
 
@@ -40,23 +40,24 @@ dir.create(file.path(plot_folder), showWarnings = FALSE)
 dfplot <- subset(dfplot, input != "emos.q" & input != "ens")
 
 
-mypal <- colorspace::rainbow_hcl(12)
+mypal <- colorspace::rainbow_hcl(13)
 mypal_use <- c("uvpp" = mypal[3],
                "decc.q" = mypal[5],
                "ecc.q" = mypal[6],
                "ecc.s" = mypal[7],
                "gca" = mypal[8],
                "ssh" = mypal[9],
-               "clayton" = mypal[10],
-               "frank" = mypal[11],
-               "gumbel" = mypal[12])
+               "Clayton" = mypal[10],
+               "Frank" = mypal[11],
+               "Gumbel" = mypal[12],
+               "GOF" = mypal[13])
 
 
 
-time_obs <- c("UVPP", "dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel")
+time_obs <- c("UVPP", "dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel", "GOF")
 
 dfplot$input <- factor(dfplot$input, levels = 
-                         c("uvpp", "decc.q", "ecc.q", "ecc.s", "gca", "ssh", "clayton", "frank", "gumbel"))
+                         c("uvpp", "decc.q", "ecc.q", "ecc.s", "gca", "ssh", "Clayton", "Frank", "Gumbel", "GOF"))
 
 
 p1 <- ggplot(dfplot, aes(x = input, y = value, colour = input))

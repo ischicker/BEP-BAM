@@ -29,23 +29,27 @@ eval_all_mult <- function(mvpp_out, obs){
   return(list("es" = esout, "vs1" = vs1out, "vs1w" = vs1wout, "vs0" = vs0out, "vs0w" = vs0wout))
 }
 
+most_occurring <- function(x) {
+  return(names(sort(table(x),decreasing=TRUE))[1])
+}
+
 
 run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, MCrep, rand_rep, progress_ind = FALSE, compute_crps, ...){
   
   d <- list(...)$d
   # generate objects to save scores to
-  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca","clayton","frank","gumbel")
-  crps_list <- es_list <- vs1_list <- vs1w_list <- vs0_list <- vs0w_list <- param_list <- indep_list <- list()
+  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca","Clayton","Frank","Gumbel", "GOF")
+  crps_list <- es_list <- vs1_list <- vs1w_list <- vs0_list <- vs0w_list <- param_list <- chosenCopula_list <- list()
   # Timing_list stores the time needed to do all relevant computations
   timing_list <- list()
   for(mm in 1:length(modelnames)){
     es_list[[mm]] <- vs1_list[[mm]] <- vs1w_list[[mm]] <- 
-      vs0_list[[mm]] <- vs0w_list[[mm]] <- param_list[[mm]] <- indep_list[[mm]] <- matrix(NA, nrow = MCrep, ncol = nout) 
+      vs0_list[[mm]] <- vs0w_list[[mm]] <- param_list[[mm]] <- chosenCopula_list[[mm]] <- matrix(NA, nrow = MCrep, ncol = nout) 
     crps_list[[mm]] <- array(NA, dim = c(MCrep, nout, d))
     timing_list[[mm]] <- array(NA, dim = MCrep) 
   }
   names(crps_list) <- names(es_list) <- names(vs1_list) <- names(vs1w_list) <- 
-    names(vs0_list) <- names(vs0w_list) <- names(param_list) <- names(indep_list) <- names(timing_list) <- modelnames
+    names(vs0_list) <- names(vs0w_list) <- names(param_list) <- names(chosenCopula_list) <- names(timing_list) <- modelnames
   
   for(rr in 1:MCrep){
     if(progress_ind){
@@ -76,7 +80,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, M
     start_time <- Sys.time()
     pp_out <- postproc(fcmodel = fcmodel, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init, 
                        obs = obs$obs, obs_init = obs$obs_init, 
-                       train = "init", trainlength = NULL, emos_plus = TRUE)
+                       train = "init", trainlength = timeWindow, emos_plus = TRUE)
     end_time <- Sys.time()
     
     timing_list$uvpp[rr] <- end_time - start_time
@@ -89,7 +93,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, M
       fc <- generate_ensfc(model = fcmodel, nout = nout, ninit = ninit, nmembers = nmembers, ...)
       pp_out <- postproc(fcmodel = fcmodel, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init, 
                          obs = obs$obs, obs_init = obs$obs_init, 
-                         train = "init", trainlength = NULL, emos_plus = TRUE)
+                         train = "init", trainlength = timeWindow, emos_plus = TRUE)
       print("Repeating observations")
     }
     
@@ -273,9 +277,9 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, M
     timing_list$gca[rr] <- apply(timing_list_tmp, 1, mean)
     
     # Archimedean copulas -> involves randomness -> repeat rand_rep times
-    for (method in c("Clayton","Frank", "Gumbel")) {
+    for (method in c("Clayton","Frank", "Gumbel", "GOF")) {
       es_list_tmp <- vs1_list_tmp <- vs1w_list_tmp <- 
-        vs0_list_tmp <- vs0w_list_tmp <- param_list_temp <- indep_list_temp <- matrix(NA, nrow = nout, ncol = rand_rep)
+        vs0_list_tmp <- vs0w_list_tmp <- param_list_temp <- chosenCopula_list_temp <- matrix(NA, nrow = nout, ncol = rand_rep)
       crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
       timing_list_tmp <- array(NA, dim = rand_rep)
       for(RR in 1:rand_rep){
@@ -286,6 +290,9 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, M
         if(compute_crps){
           crps_list_tmp[,,RR] <- crps_wrapper(mvd$mvppout, obs$obs)
         }
+        
+        chosenCopula_list_temp[,RR] <- mvd$chosenCopula
+        
         tmp <- eval_all_mult(mvpp_out = mvd$mvppout, obs = obs$obs)
         es_list_tmp[,RR] <- tmp$es
         vs1_list_tmp[,RR] <- tmp$vs1
@@ -293,7 +300,7 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, M
         vs0_list_tmp[,RR] <- tmp$vs0
         vs0w_list_tmp[,RR] <- tmp$vs0w
         param_list_temp[,RR] <- mvd$params
-        indep_list_temp[,RR] <- mvd$indep
+        
         
         
         end_time <- Sys.time()
@@ -301,37 +308,16 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, M
         timing_list_tmp[RR] <- end_time - start_time
       }
       
-      if (method == "Clayton") {
-        crps_list$clayton[rr,,] <- apply(crps_list_tmp, c(1,2), mean)
-        es_list$clayton[rr, ] <- apply(es_list_tmp, 1, mean)
-        vs1_list$clayton[rr, ] <- apply(vs1_list_tmp, 1, mean)
-        vs1w_list$clayton[rr, ] <- apply(vs1w_list_tmp, 1, mean)
-        vs0_list$clayton[rr, ] <- apply(vs0_list_tmp, 1, mean)
-        vs0w_list$clayton[rr, ] <- apply(vs0w_list_tmp, 1, mean)
-        param_list$clayton[rr, ] <- apply(param_list_temp, 1, mean)
-        timing_list$clayton[rr] <- apply(timing_list_tmp, 1, mean)
-        indep_list$clayton[rr,] <- apply(indep_list_temp, 1, mean)
-      } else if (method == "Frank") {
-        crps_list$frank[rr,,] <- apply(crps_list_tmp, c(1,2), mean)
-        es_list$frank[rr, ] <- apply(es_list_tmp, 1, mean)
-        vs1_list$frank[rr, ] <- apply(vs1_list_tmp, 1, mean)
-        vs1w_list$frank[rr, ] <- apply(vs1w_list_tmp, 1, mean)
-        vs0_list$frank[rr, ] <- apply(vs0_list_tmp, 1, mean)
-        vs0w_list$frank[rr, ] <- apply(vs0w_list_tmp, 1, mean)
-        param_list$frank[rr, ] <- apply(param_list_temp, 1, mean)
-        timing_list$frank[rr] <- apply(timing_list_tmp, 1, mean)
-        indep_list$frank[rr,] <- apply(indep_list_temp, 1, mean)
-      } else if (method == "Gumbel") {
-        crps_list$gumbel[rr,,] <- apply(crps_list_tmp, c(1,2), mean)
-        es_list$gumbel[rr, ] <- apply(es_list_tmp, 1, mean)
-        vs1_list$gumbel[rr, ] <- apply(vs1_list_tmp, 1, mean)
-        vs1w_list$gumbel[rr, ] <- apply(vs1w_list_tmp, 1, mean)
-        vs0_list$gumbel[rr, ] <- apply(vs0_list_tmp, 1, mean)
-        vs0w_list$gumbel[rr, ] <- apply(vs0w_list_tmp, 1, mean)
-        param_list$gumbel[rr, ] <- apply(param_list_temp, 1, mean)
-        timing_list$gumbel[rr] <- apply(timing_list_tmp, 1, mean)
-        indep_list$gumbel[rr,] <- apply(indep_list_temp, 1, mean)
-      } 
+      crps_list[[method]][rr,,] <- apply(crps_list_tmp, c(1,2), mean)
+      es_list[[method]][rr, ] <- apply(es_list_tmp, 1, mean)
+      vs1_list[[method]][rr, ] <- apply(vs1_list_tmp, 1, mean)
+      vs1w_list[[method]][rr, ] <- apply(vs1w_list_tmp, 1, mean)
+      vs0_list[[method]][rr, ] <- apply(vs0_list_tmp, 1, mean)
+      vs0w_list[[method]][rr, ] <- apply(vs0w_list_tmp, 1, mean)
+      param_list[[method]][rr, ] <- apply(param_list_temp, 1, mean)
+      timing_list[[method]][rr] <- apply(timing_list_tmp, 1, mean)
+      chosenCopula_list[[method]][rr,] <- apply(chosenCopula_list_temp, 1, most_occurring)
+
     }
     
     # end loop over Monte Carlo repetitions  
@@ -339,7 +325,8 @@ run_setting1 <- function(obsmodel, fcmodel, nout, ninit, nmembers, timeWindow, M
   
   # return results, as a huge list
   out <- list("crps_list" = crps_list, "es_list" = es_list, "vs1_list" = vs1_list,
-              "vs1w_list" = vs1w_list, "vs0_list" = vs0_list, "vs0w_list" = vs0w_list, "param_list" = param_list, "indep_list" = indep_list, "timing_list" = timing_list)
+              "vs1w_list" = vs1w_list, "vs0_list" = vs0_list, "vs0w_list" = vs0w_list, "param_list" = param_list, 
+              "chosenCopula_list" = chosenCopula_list, "timing_list" = timing_list)
   return(out)
 }
 

@@ -130,21 +130,7 @@ for (i.d in 1:d) {
   savePlots(paste0("PIT_group_", groupNR, "_grid_d_",i.d,".png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
 }
 
-# Create and save the Multivariate PIT plots
-plot_folder <- paste0("../Data/Plots/Group ", groupNR, "/Multivariate/")
-dir.create(file.path(plot_folder), showWarnings = FALSE)
-plot_vec <- c()
-plotWidth <-  8
-plotHeight <- 8
-for (model in mvpp_approaches) {
-  plot <- createPIT(model)
-  plot_vec <- c(plot_vec, list(plot))
-  # Save the plots
-  savePlots(paste0("PIT_group_", groupNR, "_", model,"_multivariate.png"), plot)
-}
-plotWidth <-  5 * cols
-plotHeight <- 5 * rows
-savePlots(paste0("PIT_group_", groupNR, "_grid_multivariate.png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
+
 
 
 

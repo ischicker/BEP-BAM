@@ -64,7 +64,6 @@
 
 
 library(copula)
-options(digits = 20)
 mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL, timeWindow, uvpp = NULL){
   
   # include some checks for inputs
@@ -72,7 +71,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
   # generate array for ouput
   mvppout <- array(NA, dim = dim(ensfc))
   params <- array(NA, dim = dim(ensfc)[1])
-  indep <- array(NA, dim = dim(ensfc)[1])
+  chosenCopula <- array(NA, dim = dim(ensfc)[1])
   n <- dim(mvppout)[1]
   m <- dim(mvppout)[2]
   d <- dim(mvppout)[3]
@@ -197,24 +196,42 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       message("'EMOS_sample' and 'variant' input have no effect for GCA")
     } 
     
+    # qlevels <- 1:m/(m+1)
+    
+    # EMOS_Q_sample <- array(NA, dim = c(n,d))
+    # for (nn in 1:n){
+    #   for(dd in 1:d){
+    #     dat <- subset(uvpp, stat == dd)
+    #     averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+    #     averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+    #     EMOS_Q_sample[nn, dd] <- qnorm(qlevels, mean = averagedMean, sd = averagedSd)
+    #   }
+    # }
+    
     # concatenate obs_init and obs arrays to determine covariance matrix for Gaussian copulas
     obs_all <- rbind(obs_init, obs)
     
     for(nn in 1:n){
       
-      # Only last measurements
+      # # Only last measurements
       obs_train <- obs_all[(dim(obs_init)[1]+nn - timeWindow):(dim(obs_init)[1]+nn-1), ]
-      
+      # obs_train <- EMOS_Q_sample[(dim(obs_init)[1]+nn - timeWindow):(dim(obs_init)[1]+nn-1), ]
       # print(dim(obs_init))
       
       # Latent Gaussian observations
       obs_latent_gaussian <- array(NA, dim = c(timeWindow, d))
       for(dd in 1:d){
-        dat <- subset(uvpp, stat == dd)
-        averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
-        # print(averagedMean)
-        averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
-        # print(averagedSd)
+        if (!is.null(uvpp)) {
+          dat <- subset(uvpp, stat == dd)
+          averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+          # print(averagedMean)
+          averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+          # print(averagedSd)
+        } else {
+          par <- postproc_out[nn, dd, ]
+          averagedMean <- par[1]
+          averagedSd <- par[2]
+        }
         obs_latent_gaussian[,dd] <- qnorm(pnorm(obs_train[,dd], mean = averagedMean, sd = averagedSd))
       }
       
@@ -243,11 +260,19 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         
         # impose dependence structure on post-processed forecasts
         for(dd in 1:d){
-          dat <- subset(uvpp, stat == dd)
-          averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
-          averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+          if (!is.null(uvpp)) {
+            dat <- subset(uvpp, stat == dd)
+            averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+            # print(averagedMean)
+            averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+            # print(averagedSd)
+          } else {
+            par <- postproc_out[nn, dd, ]
+            averagedMean <- par[1]
+            averagedSd <- par[2]
+          }
           # Using log=T to capture outliers (that otherwise get an infinite value)
-          temp <- qnorm(pnorm(mvsample[, dd]), mean = averagedMean, sd = averagedSd)
+          temp <- qnorm( pnorm(mvsample[, dd]) , mean = averagedMean, sd = averagedSd)
           if (all(is.finite((temp)))) {
             mvppout[nn, , dd] <- temp
           } else {
@@ -266,15 +291,12 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
   }
     
     # Archimedean copula code
-    if(any(match(c("Clayton", "Frank", "Gumbel"), method, nomatch = 0) != 0 ) ){
+    if(any(match(c("Clayton", "Frank", "Gumbel", "GOF"), method, nomatch = 0) != 0 ) ){
       require(MASS)
       
       # if no EMOS_sample to base Clayton on is given, recursively call 'mvpp' to generate such a sample
       if(any(!is.null(c(EMOS_sample, variant)))){
         message("'EMOS_sample' and 'variant' input have no effect for Archimedean copulas")
-      } 
-      if(is.null(uvpp)){
-        message("'UVPP must be an input")
       } 
       
       # concatenate obs_init and obs arrays to determine covariance matrix for Gaussian copulas
@@ -289,18 +311,68 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         obs_train_CDF <- c()
         mean_vector <- c()
         sd_vector <- c()
-        for (i in 1:d) {
+        for (dd in 1:d) {
           # Use EMOS values for marginals
-          dat <- subset(uvpp, stat == i)
-          averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
-          averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+          if (!is.null(uvpp)) {
+            dat <- subset(uvpp, stat == dd)
+            averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+            # print(averagedMean)
+            averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+            # print(averagedSd)
+          } else {
+            par <- postproc_out[nn, dd, ]
+            averagedMean <- par[1]
+            averagedSd <- par[2]
+          }
           
-          obs_train_CDF <- cbind(obs_train_CDF, pnorm(obs_train[,i], mean = averagedMean, sd = averagedSd))
+          obs_train_CDF <- cbind(obs_train_CDF, pnorm(obs_train[,dd], mean = averagedMean, sd = averagedSd))
           
           # Add for later use
           mean_vector <- c(mean_vector, averagedMean)
           sd_vector <- c(sd_vector, averagedSd)
         }
+        
+        try({
+          if (method == "GOF") {
+            
+            # Try to fit all copulas and select the best
+            gof_vector <- list()
+            
+            gof_vector$Clayton <- gofCopula(claytonCopula(dim = d), obs_train_CDF, N = 10)
+            gof_vector$Frank <- gofCopula(frankCopula(dim = d), obs_train_CDF, N = 10)
+            gof_vector$Gumbel <- gofCopula(gumbelCopula(dim = d), obs_train_CDF, N = 10)
+            
+            copulas <- c("Clayton", "Frank", "Gumbel")
+            
+            best_index <- -1
+            best_p <- -1
+            
+            for (i in 1:length(copulas)) {
+              gof <- gof_vector[[copulas[i]]]
+              
+              tryCatch({
+                if (gof$p.value > best_p) {
+                  best_index <- i
+                  best_p <- gof$p.value
+                }
+                } , error = function(e) {
+              })
+            }
+            if (best_index == -1) {
+              method <- "indep"
+              fitcop <- indepCopula(dim=d)
+            } else {
+              method <- copulas[best_index]
+            }
+        
+          }
+        }
+        )
+        
+        if (method == "GOF") {
+          method <- c("Clayton", "Frank", "Gumbel")[sample(1:3,1)]
+        }
+          
         
         # Estimate the parameter and copula - itau method does not converge for some cases (without giving a warning/ error and runs indefinitely)
         # Copula parameters are bounded to prevent generating inf samples
@@ -333,14 +405,12 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         
         if (!(class(fitcop) == "indepCopula")){
           cop <- fitcop@copula
-          indep[nn] <- FALSE
-          # print("SUCCESS")
+          chosenCopula[nn] <- method
         
           # Save the fitted parameter
           params[nn] <- fitcop@estimate
         } else {
-          indep[nn] <- TRUE
-          # print("Using indep copula")
+          chosenCopula[nn] <- "indep"
           cop <- fitcop
         }
         
@@ -350,15 +420,11 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         for (i in 1:d){
           paramMargins[[i]] <- list(mean = mean_vector[i], sd = sd_vector[i])
         }
-        # .GlobalEnv$paramMargins <- paramMargins
-        # .GlobalEnv$mean_vector <- mean_vector
-        # .GlobalEnv$sd_vector <- sd_vector
         
         # Generate observations with standard normal marginals
         mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
                                paramMargins=paramMargins)
         
-        .GlobalEnv$dist <- mvDistribution
         
         # Make sure to get numeric values
         max_reps <- 2
@@ -452,7 +518,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
     # end of dECC code   
   }
   
-  return(list("mvppout" = mvppout, "params" = params, "indep" = indep))
+  return(list("mvppout" = mvppout, "params" = params, "chosenCopula" = chosenCopula))
   # in random methods: distinguish cases with and without given EMOS_sample, maybe only handle that with sample at first, rest can be included later on
   # if no sample is given, a new one has to be generated, as done for the EMOS methods themselves
 }
