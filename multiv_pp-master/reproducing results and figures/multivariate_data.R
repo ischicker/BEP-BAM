@@ -29,23 +29,37 @@ dir.create(file.path(plot_folder), showWarnings = FALSE)
 df1_save <- df1 
 df1 <- subset(df1_save, model != "ens")
 
-# also drop EMOS.Q and GOF
-df2 <- subset(df1, model != "emos.q" & model != "GOF")
+# # also drop EMOS.Q and GOF
+# df2 <- subset(df1, model != "emos.q" & model != "GOF")
+# 
+# mypal <- colorspace::rainbow_hcl(10)
+# mypal_use <- c("decc.q" = mypal[1],
+#                "ecc.q" = mypal[2],
+#                "ecc.s" = mypal[3],
+#                "gca" = mypal[4],
+#                "ssh" = mypal[5],
+#                "Clayton" = mypal[6],
+#                "Frank" = mypal[7],
+#                "Gumbel" = mypal[8],
+#                "Surv_Gumbel" = mypal[9],
+#                "Seasonal" = mypal[10])
+# 
+# df2$model <- factor(df2$model, levels = c("decc.q", "ecc.q", "ecc.s", "gca", "ssh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal"))
+# model_vec <- c("dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal")
+
+# also drop EMOS.Q, GOF, ECC methods and GCA
+df2 <- subset(df1, model != "emos.q" & model != "GOF" & model != "decc.q" & model != "ecc.q" & model != "ecc.s" & model != "gca")
 
 mypal <- colorspace::rainbow_hcl(10)
-mypal_use <- c("decc.q" = mypal[1],
-               "ecc.q" = mypal[2],
-               "ecc.s" = mypal[3],
-               "gca" = mypal[4],
-               "ssh" = mypal[5],
-               "Clayton" = mypal[6],
-               "Frank" = mypal[7],
-               "Gumbel" = mypal[8],
-               "Surv_Gumbel" = mypal[9],
-               "Seasonal" = mypal[10])
+mypal_use <- c("ssh" = mypal[1],
+               "Clayton" = mypal[2],
+               "Frank" = mypal[3],
+               "Gumbel" = mypal[4],
+               "Surv_Gumbel" = mypal[5],
+               "Seasonal" = mypal[6])
 
-df2$model <- factor(df2$model, levels = c("decc.q", "ecc.q", "ecc.s", "gca", "ssh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal"))
-model_vec <- c("dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal")
+df2$model <- factor(df2$model, levels = c("ssh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal"))
+model_vec <- c("SSh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal")
 
 ylimitFunc <- function(val1, val2) {
   return(1.5 * max(abs(val1), abs(val2)))
