@@ -37,7 +37,7 @@ plot_folder <- paste0("../Data/Plots/Group ",groupNR,"/")
 dir.create(file.path(plot_folder), showWarnings = FALSE)
 
 
-dfplot <- subset(dfplot, input != "emos.q" & input != "ens")
+dfplot <- subset(dfplot, input != "emos.q" & input != "ens" & input != "GOF")
 
 
 mypal <- colorspace::rainbow_hcl(13)
@@ -50,14 +50,15 @@ mypal_use <- c("uvpp" = mypal[3],
                "Clayton" = mypal[10],
                "Frank" = mypal[11],
                "Gumbel" = mypal[12],
-               "GOF" = mypal[13])
+               "Surv_Gumbel" = mypal[12],
+               "Seasonal" = mypal[13])
 
 
 
-time_obs <- c("UVPP", "dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel", "GOF")
+time_obs <- c("UVPP", "dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel", "Surv_Gumbel", "Seasonal")
 
 dfplot$input <- factor(dfplot$input, levels = 
-                         c("uvpp", "decc.q", "ecc.q", "ecc.s", "gca", "ssh", "Clayton", "Frank", "Gumbel", "GOF"))
+                         c("uvpp", "decc.q", "ecc.q", "ecc.s", "gca", "ssh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal"))
 
 
 p1 <- ggplot(dfplot, aes(x = input, y = value, colour = input))

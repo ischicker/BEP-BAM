@@ -10,7 +10,7 @@ source( "../Settings.R")
 # Setting parameter for different runs
 setting <- 1
 
-getModelSettings(modelSetting = 3)
+getModelSettings(modelSetting = 2)
 
 
 fName <- paste0("Archimedean","_setting_",setting, "_obsmodel_",observationsModel,"_fcmodel_",forecastModel,"_ID_")

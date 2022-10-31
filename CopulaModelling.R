@@ -52,5 +52,34 @@ library("scatterplot3d")
 ?claytonCopula
 
 
+
+
+
+psurv_norm <- function(x, mean=0, sd=1) {
+  return(1-pnorm(x,mean=mean, sd=sd))
+}
+
+qsurv_norm <- function(x, mean=0, sd=1) {
+  return(1-qnorm(x,mean=mean, sd=sd))
+}
+
+dsurv_norm <- function(x, mean=0, sd=1) {
+  return(-dnorm(x,mean=mean, sd=sd))
+}
+
 clayton.cop <- claytonCopula(2, dim = 3)
-scatterplot3d(rCopula(1000, clayton.cop))
+clayton.mvDistribution <- mvdc(copula=clayton.cop, margins=rep("norm", 3),
+                       paramMargins=list(list(mean=2,sd=1),list(mean=4,sd=5), list(mean=40,sd=1)))
+
+clayton.mvsample <- rMvdc(5000, clayton.mvDistribution)
+scatterplot3d(clayton.mvsample)
+
+fitgumbel.cop <- fitCopula(gumbelCopula(dim = 3), data = 1-pobs(clayton.mvsample), method="mpl", start = 1,optim.control = list(maxit=1000), upper = 100)
+gumbel.cop <- fitgumbel.cop@copula
+
+gumbel.mvDistribution <- mvdc(copula=gumbel.cop, margins=rep("surv_norm", 3),
+                       paramMargins=list(list(mean=-2,sd=1),list(mean=-4,sd=5), list(mean=-40,sd=1)))
+
+gumbel.mvsample <- rMvdc(5000, gumbel.mvDistribution)
+scatterplot3d(gumbel.mvsample)
+

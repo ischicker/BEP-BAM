@@ -12,7 +12,7 @@ getData <- function() {
   # ytime = initial + 1
   # inca (Integrated Nowcasting through Comprehensive Analyses) contains the observations
   # cosmo (Consortium for Small-scale Modeling) another forecast
-  setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/simulation code")
+  setwd("C:/Users/20192042/OneDrive - TU Eindhoven/University/Bachelor/Year 3/BEP - BAM/Code/multiv_pp-master/simulation code")
   
   # Data file names
   fName2013 <- "INPUT-DATA_temp_2013071000-2016033000"
@@ -74,11 +74,15 @@ getData <- function() {
   group1 <- c(188, 189, 191)
   group2 <- c(64, 169, 188)
   group3 <- c(19, 150, 172)
+  group4 <- match(c(11367, 11077, 11333), statNR)
+  group5 <- match(c(11007, 11036, 11001), statNR)
   
   # Select the data for those groups
   data1 <- subset(data, stat %in% statNR[group1])
   data2 <- subset(data, stat %in% statNR[group2])
   data3 <- subset(data, stat %in% statNR[group3])
+  data4 <- subset(data, stat %in% statNR[group4])
+  data5 <- subset(data, stat %in% statNR[group5])
   
   
   # Some time stamps do not have data for all stations (after removing NA) --> remove data points
@@ -101,16 +105,22 @@ getData <- function() {
   data1 <- cleanup(data1)
   data2 <- cleanup(data2)
   data3 <- cleanup(data3)
+  data4 <- cleanup(data4)
+  data5 <- cleanup(data5)
   
   .GlobalEnv$statNR <- statNR
   
   .GlobalEnv$group1 <- group1
   .GlobalEnv$group2 <- group2
   .GlobalEnv$group3 <- group3
+  .GlobalEnv$group4 <- group4
+  .GlobalEnv$group5 <- group5
   
   .GlobalEnv$data1 <- data1
   .GlobalEnv$data2 <- data2
   .GlobalEnv$data3 <- data3
+  .GlobalEnv$data4 <- data4
+  .GlobalEnv$data5 <- data5
   
   .GlobalEnv$data <- data
 }

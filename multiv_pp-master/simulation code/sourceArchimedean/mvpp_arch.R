@@ -62,19 +62,34 @@
 # mvd <- mvpp(method = "Frank", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
 #             obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out)
 
+psurv_norm <- function(x, mean=0, sd=1) {
+  return(1-pnorm(x,mean=mean, sd=sd))
+}
+
+qsurv_norm <- function(x, mean=0, sd=1) {
+  return(1-qnorm(x,mean=mean, sd=sd))
+}
+
+dsurv_norm <- function(x, mean=0, sd=1) {
+  return(-dnorm(x,mean=mean, sd=sd))
+}
 
 library(copula)
-mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL, timeWindow, uvpp = NULL){
+mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL, timeWindow, ecc_m, uvpp = NULL){
   
   # include some checks for inputs
   
   # generate array for ouput
-  mvppout <- array(NA, dim = dim(ensfc))
   params <- array(NA, dim = dim(ensfc)[1])
   chosenCopula <- array(NA, dim = dim(ensfc)[1])
-  n <- dim(mvppout)[1]
-  m <- dim(mvppout)[2]
-  d <- dim(mvppout)[3]
+  n <- dim(ensfc)[1]
+  if (method %in% c("ECC", "dECC", "GCA")) {
+    m <- dim(ensfc)[2]
+  } else {
+    m <- ecc_m
+  }
+  d <- dim(ensfc)[3]
+  mvppout <- array(NA, dim = c(n,m,d))
   
   # EMOS methods: no accounting for multivariate dependencies, simply draw from marginals
   if(method == "EMOS"){
@@ -163,7 +178,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       }
       EMOS_sample <- mvpp(method = "EMOS", variant = variant, postproc_out = postproc_out,
                           ensfc = ensfc, ensfc_init = ensfc_init, 
-                          obs = obs, obs_init = obs_init)
+                          obs = obs, obs_init = obs_init, ecc_m = ecc_m)
       message("no 'EMOS_sample' given for SSh, a new one is generated")
     } else if(!is.null(variant)){
       message("'variant' parameter has no influence if EMOS_sample is supplied, 
@@ -291,7 +306,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
   }
     
     # Archimedean copula code
-    if(any(match(c("Clayton", "Frank", "Gumbel", "GOF"), method, nomatch = 0) != 0 ) ){
+    if(any(match(c("Clayton", "Frank", "Gumbel", "Surv_Gumbel", "GOF"), method, nomatch = 0) != 0 ) ){
       require(MASS)
       
       # if no EMOS_sample to base Clayton on is given, recursively call 'mvpp' to generate such a sample
@@ -332,46 +347,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
           sd_vector <- c(sd_vector, averagedSd)
         }
         
-        try({
-          if (method == "GOF") {
-            
-            # Try to fit all copulas and select the best
-            gof_vector <- list()
-            
-            gof_vector$Clayton <- gofCopula(claytonCopula(dim = d), obs_train_CDF, N = 10)
-            gof_vector$Frank <- gofCopula(frankCopula(dim = d), obs_train_CDF, N = 10)
-            gof_vector$Gumbel <- gofCopula(gumbelCopula(dim = d), obs_train_CDF, N = 10)
-            
-            copulas <- c("Clayton", "Frank", "Gumbel")
-            
-            best_index <- -1
-            best_p <- -1
-            
-            for (i in 1:length(copulas)) {
-              gof <- gof_vector[[copulas[i]]]
-              
-              tryCatch({
-                if (gof$p.value > best_p) {
-                  best_index <- i
-                  best_p <- gof$p.value
-                }
-                } , error = function(e) {
-              })
-            }
-            if (best_index == -1) {
-              method <- "indep"
-              fitcop <- indepCopula(dim=d)
-            } else {
-              method <- copulas[best_index]
-            }
         
-          }
-        }
-        )
-        
-        if (method == "GOF") {
-          method <- c("Clayton", "Frank", "Gumbel")[sample(1:3,1)]
-        }
           
         
         # Estimate the parameter and copula - itau method does not converge for some cases (without giving a warning/ error and runs indefinitely)
@@ -399,7 +375,14 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
             # print(e)
             indepCopula(dim=d)
           })
-        } else {
+        } else if (method == "Surv_Gumbel") {
+          fitcop <-tryCatch({
+            fitCopula(gumbelCopula(dim = d), data = 1-obs_train_CDF, method="mpl", start = 1,optim.control = list(maxit=1000), upper = 100)
+          }, error = function(e) {
+            # print(e)
+            indepCopula(dim=d)
+          })
+        }else {
           stop("Incorrect copula")
         }
         
@@ -416,14 +399,21 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         
         # draw random sample from multivariate normal distribution with this estimated copula
         paramMargins <- list()
+        surv_paramMargins <- list()
         
         for (i in 1:d){
           paramMargins[[i]] <- list(mean = mean_vector[i], sd = sd_vector[i])
+          surv_paramMargins[[i]] <- list(mean = -mean_vector[i], sd = sd_vector[i])
         }
         
-        # Generate observations with standard normal marginals
-        mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
-                               paramMargins=paramMargins)
+        # Generate observations with normal marginals
+        if (method == "Surv_Gumbel") {
+          mvDistribution <- mvdc(copula=cop, margins=rep("surv_norm", d),
+                                 paramMargins=surv_paramMargins)
+        } else {
+          mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
+                                 paramMargins=paramMargins)
+        }
         
         
         # Make sure to get numeric values

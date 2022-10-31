@@ -14,6 +14,7 @@ source(paste0(dir, "postprocess_ensfc_arch.R"))
 source(paste0(dir, "mvpp_arch.R"))
 source(paste0(dir, "evaluation_functions_arch.R"))
 source(paste0(dir, "CopulaParameter.R"))
+source(paste0(dir, "mvpp_data_copula_study.R"))
 source("ECC_T2M_Emos_subfunctions.R")
 
 
@@ -39,7 +40,7 @@ eval_all_mult <- function(mvpp_out, obs){
 run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   
   # Use same time window as training days for UVPP
-  timeWindow <- trainingDays
+  timeWindow <- 30
   
   # Stations and days from the data
   stations <- unique(data$stat)
@@ -51,10 +52,11 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   
   # Ensemble members
   m <- sum(grepl("laef", names(data)))
+  ecc_m <- 50
   ensembleMembers <- sapply(1:m, FUN = function(x) paste0("laef", x))
   
   # generate objects to save scores to
-  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca","Clayton","Frank","Gumbel", "GOF")
+  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca","Clayton","Frank","Gumbel", "Surv_Gumbel", "Seasonal")
   crps_list <- es_list <- vs1_list <- vs1w_list <- vs0_list <- vs0w_list <- mvpp_list <- chosenCopula_list <- list()
   
   # Timing_list stores the time needed to do all relevant computations
@@ -132,6 +134,7 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   
   timing_list$uvpp <- end_time - start_time
   
+  
   print("Start MVPP")
   ## Start MVPP
   
@@ -167,12 +170,12 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   vs0_list$ens <- tmp$vs0
   vs0w_list$ens <- tmp$vs0w
   
-  # .GlobalEnv$uvpp <- uvpp
-  # .GlobalEnv$pp_out <- pp_out
-  # .GlobalEnv$obs_init <- obs_init
-  # .GlobalEnv$obs <- obs
-  # .GlobalEnv$ensfc_init <- ensfc_init
-  # .GlobalEnv$ensfc <- ensfc
+  .GlobalEnv$uvpp <- uvpp
+  .GlobalEnv$pp_out <- pp_out
+  .GlobalEnv$obs_init <- obs_init
+  .GlobalEnv$obs <- obs
+  .GlobalEnv$ensfc_init <- ensfc_init
+  .GlobalEnv$ensfc <- ensfc
   
   mvpp_list$ens <- ensfc
   
@@ -180,7 +183,7 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   # EMOS.Q
   start_time <- Sys.time()
   emos.q <- mvpp(method = "EMOS", variant = "Q", ensfc = ensfc, ensfc_init = ensfc_init,
-                 obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow)
+                 obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = m)
 
 
 
@@ -231,7 +234,7 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   for(RR in 1:rand_rep){
     start_time <- Sys.time()
     emos.s <- mvpp(method = "EMOS", variant = "S", ensfc = ensfc, ensfc_init = ensfc_init,
-                   obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow)
+                   obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = m)
     ecc.s <- mvpp(method = "ECC", ensfc = ensfc, ensfc_init = ensfc_init,
                   obs = obs, obs_init = obs_init, postproc_out = pp_out,
                   EMOS_sample = emos.s$mvppout, timeWindow = timeWindow)
@@ -286,11 +289,16 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
     vs0_list_tmp <- vs0w_list_tmp <- matrix(NA, nrow = nout, ncol = rand_rep)
   crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
   timing_list_tmp <- array(NA, dim = rand_rep)
+  
+  # EMOS.Q with different m
+  emos.q <- mvpp(method = "EMOS", variant = "Q", ensfc = ensfc, ensfc_init = ensfc_init,
+                 obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m)
+  
   for(RR in 1:rand_rep){
     start_time <- Sys.time()
     ssh <- mvpp(method = "SSh", ensfc = ensfc, ensfc_init = ensfc_init,
                 obs = obs, obs_init = obs_init, postproc_out = pp_out,
-                EMOS_sample = emos.q$mvppout, timeWindow = timeWindow)
+                EMOS_sample = emos.q$mvppout, timeWindow = timeWindow, ecc_m = ecc_m)
 
     crps_list_tmp[,,RR] <- crps_wrapper(ssh$mvppout, obs)
     tmp <- eval_all_mult(mvpp_out = ssh$mvppout, obs = obs)
@@ -323,7 +331,7 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   for(RR in 1:rand_rep){
     start_time <- Sys.time()
     gca <- mvpp(method = "GCA", ensfc = ensfc, ensfc_init = ensfc_init,
-                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, uvpp = uvpp)
+                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp)
 
     crps_list_tmp[,,RR] <- crps_wrapper(gca$mvppout, obs)
     tmp <- eval_all_mult(mvpp_out = gca$mvppout, obs = obs)
@@ -348,14 +356,14 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   mvpp_list$gca <- gca$mvppout
 
   # Archimedean copulas -> involves randomness -> repeat rand_rep times
-  for (method in c("Clayton","Frank", "Gumbel", "GOF")) {
+  for (method in c("Surv_Gumbel", "Clayton","Frank", "Gumbel")) {
     print(method)
 
 
       
     start_time <- Sys.time()
     mvd <- mvpp(method = method, ensfc = ensfc, ensfc_init = ensfc_init,
-                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, uvpp = uvpp)
+                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp)
     
     chosenCopula_list[[method]] <- mvd$chosenCopula
     
@@ -377,32 +385,66 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
 
     timing_list[[method]] <- end_time - start_time
 
-
-
   }
+  
+  # Seasonal copula MVPP
+  print("Seasonal")
+  start_time <- Sys.time()
+  
+  mvd <- seasonal_copula(data, ensfc = ensfc, obs = obs, obs_init = obs_init, postproc_out = pp_out, ecc_m = ecc_m)
+  
+  good_rows <- !unname(apply(mvd$mvppout, MARGIN = 1, FUN = function(x) any(is.na(x))))
+  score_mvppout <- mvd$mvppout[good_rows,,]
+  score_obs <- obs[good_rows,]
+  
+  crps_list[["Seasonal"]][good_rows,] <- crps_wrapper(score_mvppout, score_obs)
+  tmp <- eval_all_mult(mvpp_out = score_mvppout, obs = score_obs)
+  es_list[["Seasonal"]][good_rows] <- tmp$es
+  vs1_list[["Seasonal"]][good_rows] <- tmp$vs1
+  vs1w_list[["Seasonal"]][good_rows] <- tmp$vs1w
+  vs0_list[["Seasonal"]][good_rows] <- tmp$vs0
+  vs0w_list[["Seasonal"]][good_rows] <- tmp$vs0w
+  
+  mvpp_list[["Seasonal"]] <- mvd$mvppout
+  
+  end_time <- Sys.time()
+  
+  timing_list[["Seasonal"]] <- end_time - start_time
+  
+  copula_df <- mvd$copula_df
   
   
   print("Returning Output")
   # return results, as a huge list
   out <- list("crps_list" = crps_list, "es_list" = es_list, "vs1_list" = vs1_list,
               "vs1w_list" = vs1w_list, "vs0_list" = vs0_list, "vs0w_list" = vs0w_list, 
-              "timing_list" = timing_list, "mvpp_list" = mvpp_list, "chosenCopula_list" = chosenCopula_list,"obs" = obs)
+              "timing_list" = timing_list, "mvpp_list" = mvpp_list, "chosenCopula_list" = chosenCopula_list,
+              "obs" = obs, "copula_df" = copula_df)
   return(out)
 }
-traininDays <- 30
+trainingDays <- 365
 saveDir <- "./../Data/Rdata_LAEF/"
 
-# res <- run_processing(data1, traininDays, progress_ind = TRUE)
-# savename <- paste0(saveDir, "Res_group_1", ".Rdata")
-# save(res, file = savename)
+res <- run_processing(data1, trainingDays, progress_ind = TRUE)
+savename <- paste0(saveDir, "Res_group_1", ".Rdata")
+save(res, file = savename)
 
-res <- run_processing(data2, traininDays, progress_ind = TRUE)
+res <- run_processing(data2, trainingDays, progress_ind = TRUE)
 savename <- paste0(saveDir, "Res_group_2", ".Rdata")
 save(res, file = savename)
 
-res <- run_processing(data3, traininDays, progress_ind = TRUE)
+res <- run_processing(data3, trainingDays, progress_ind = TRUE)
 savename <- paste0(saveDir, "Res_group_3", ".Rdata")
 save(res, file = savename)
+
+res <- run_processing(data4, trainingDays, progress_ind = TRUE)
+savename <- paste0(saveDir, "Res_group_4", ".Rdata")
+save(res, file = savename)
+
+res <- run_processing(data5, trainingDays, progress_ind = TRUE)
+savename <- paste0(saveDir, "Res_group_5", ".Rdata")
+save(res, file = savename)
+
 
 
 

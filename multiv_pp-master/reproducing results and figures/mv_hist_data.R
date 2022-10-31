@@ -1,4 +1,4 @@
-rm(list=ls())
+# rm(list=ls())
 library(ggplot2)
 library(ggpubr)
 library(purrr)
@@ -7,7 +7,7 @@ library(fields)
 library(vegan)
 
 setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
-groupNR <- 2
+groupNR <- 3
 fName <- paste0("Res_group_", groupNR)
 load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
 
@@ -23,7 +23,7 @@ plotTheme <- theme(axis.text=element_text(size=7),
                    plot.title = element_text(size=22,hjust = 0.5))
 
 # Save settings
-# Create and save the Multivariate PIT plots
+# Create and save the Multivariate histogram plots
 plot_folder <- paste0("../Data/Plots/Group ", groupNR, "/Rank Histograms/")
 dir.create(file.path(plot_folder), showWarnings = FALSE)
 plot_vec <- c()
@@ -180,10 +180,10 @@ for (histType in mvtypes) {
   plot_vec <- c()
   plot_vec2 <- c()
   for (model in names(dat)) {
-    if (model != "emos.q") {
+    if (model != "emos.q" & model != "GOF") {
       p <- mvr.histogram(modelName = model, histType = histType)
       plot_vec <- c(plot_vec, list(p))
-      savePlots(paste0(histType,"/PIT_group_", groupNR, "_", model,"_multivariate.png"), p)
+      savePlots(paste0(histType,"/MV_HIST_group_", groupNR, "_", model,"_multivariate.png"), p)
       
       if (model %in% c("ens", "Clayton", "Frank", "Gumbel")) {
         plot_vec2 <- c(plot_vec2, list(p))
@@ -192,13 +192,13 @@ for (histType in mvtypes) {
     
   }
   
-  cols <- 5
+  cols <- 6
   rows <- 2
   
   
   plotWidth <-  5 * cols
   plotHeight <- 5 * rows
-  savePlots(paste0(histType,"/PIT_group_", groupNR, "_grid_", histType, ".png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
+  savePlots(paste0(histType,"/MV_HIST_group_", groupNR, "_grid_", histType, ".png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
   
   cols <- 2
   rows <- 2
@@ -206,41 +206,41 @@ for (histType in mvtypes) {
   
   plotWidth <-  5 * cols
   plotHeight <- 5 * rows
-  savePlots(paste0(histType,"/PIT_group_", groupNR, "_Special_", histType, ".png"),ggarrange(plotlist = plot_vec2,nrow = rows,ncol = cols))
+  savePlots(paste0(histType,"/MV_HIST_group_", groupNR, "_Special_", histType, ".png"),ggarrange(plotlist = plot_vec2,nrow = rows,ncol = cols))
 }
 
-# uv
-for (dd in 1:dim(dat$ens)[3]) {
-  savePath <- paste0(plot_folder, "uv_d=",dd,"/")
-  dir.create(file.path(savePath), showWarnings = FALSE)
-  plotWidth <-  8
-  plotHeight <- 8
-  plot_vec <- c()
-  plot_vec2 <- c()
-  for (model in names(dat)) {
-    if (model != "emos.q") {
-      p <- mvr.histogram(modelName = model, histType = "uv", d = dd)
-      plot_vec <- c(plot_vec, list(p))
-      savePlots(paste0("uv_d=",dd,"/PIT_group_", groupNR, "_", model,"_univariate_d=",dd,".png"), p)
-      if (model %in% c("ens", "Clayton", "Frank", "Gumbel")) {
-        plot_vec2 <- c(plot_vec2, list(p))
-      }
-    }
-  }
-
-  cols <- 5
-  rows <- 2
-
-
-  plotWidth <-  5 * cols
-  plotHeight <- 5 * rows
-  savePlots(paste0("uv_d=",dd,"/PIT_group_", groupNR, "_grid_univariate_d=",dd, ".png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
-  
-  cols <- 2
-  rows <- 2
-  
-  
-  plotWidth <-  5 * cols
-  plotHeight <- 5 * rows
-  savePlots(paste0("uv_d=",dd,"/PIT_group_", groupNR, "_Special_univariate_d=",dd,"_type=", histType, ".png"),ggarrange(plotlist = plot_vec2,nrow = rows,ncol = cols))
-}
+# # uv
+# for (dd in 1:dim(dat$ens)[3]) {
+#   savePath <- paste0(plot_folder, "uv_d=",dd,"/")
+#   dir.create(file.path(savePath), showWarnings = FALSE)
+#   plotWidth <-  8
+#   plotHeight <- 8
+#   plot_vec <- c()
+#   plot_vec2 <- c()
+#   for (model in names(dat)) {
+#     if (model != "emos.q" & model != "GOF") {
+#       p <- mvr.histogram(modelName = model, histType = "uv", d = dd)
+#       plot_vec <- c(plot_vec, list(p))
+#       savePlots(paste0("uv_d=",dd,"/UV_HIST_", groupNR, "_", model,"_univariate_d=",dd,".png"), p)
+#       if (model %in% c("ens", "Clayton", "Frank", "Gumbel")) {
+#         plot_vec2 <- c(plot_vec2, list(p))
+#       }
+#     }
+#   }
+# 
+#   cols <- 6
+#   rows <- 2
+# 
+# 
+#   plotWidth <-  5 * cols
+#   plotHeight <- 5 * rows
+#   savePlots(paste0("uv_d=",dd,"/UV_HIST_group_", groupNR, "_grid_univariate_d=",dd, ".png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
+#   
+#   cols <- 2
+#   rows <- 2
+#   
+#   
+#   plotWidth <-  5 * cols
+#   plotHeight <- 5 * rows
+#   savePlots(paste0("uv_d=",dd,"/UV_HIST_group_", groupNR, "_Special_univariate_d=",dd,"_type=", histType, ".png"),ggarrange(plotlist = plot_vec2,nrow = rows,ncol = cols))
+# }

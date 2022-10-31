@@ -19,7 +19,7 @@
 #  (adjusted from Moritz's code)
 #####################################################################
 
-setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/simulation code")
+setwd("C:/Users/20192042/OneDrive - TU Eindhoven/University/Bachelor/Year 3/BEP - BAM/Code/multiv_pp-master/simulation code")
 source("emos_T2M_mean_singleForecast_subfunctions-orig.R")
 
 emos_T2M_mean_singleForecast<-function(data.lt, trainingDays){

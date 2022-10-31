@@ -1,7 +1,7 @@
 # code to compute test statistics of DM tests
 # results are saved in a specific data frame format to simplify plotting later on
 
-rm(list=ls())
+# rm(list=ls())
 
 setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/processing code for simulation output")
 
