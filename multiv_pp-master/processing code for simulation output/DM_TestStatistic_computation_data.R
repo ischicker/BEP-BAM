@@ -3,7 +3,7 @@
 
 # rm(list=ls())
 
-setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/processing code for simulation output")
+setwd("C:/Users/20192042/OneDrive - TU Eindhoven/University/Bachelor/Year 3/BEP - BAM/Code/multiv_pp-master/processing code for simulation output")
 
 
 
@@ -31,7 +31,7 @@ for(this_model in input_models){
 
       tmp <- NA
       tryDM <- try(tmp_DM <- dm.test(e1 = res[[which(input_scores == this_score)]][[which(input_models == this_model)]],
-                                     e2 = res[[which(input_scores == this_score)]][[which(input_models == "ecc.q")]],
+                                     e2 = res[[which(input_scores == this_score)]][[which(input_models == "gca")]],
                                      h = 1, power = 1), silent = TRUE)
       if(class(tryDM) != "try-error"){
         tmp <- tmp_DM$statistic
@@ -42,7 +42,7 @@ for(this_model in input_models){
     } else{
         tmp <- NA
         tryDM <- try(tmp_DM <- dm.test(e1 = res[[which(input_scores == this_score)]][[which(input_models == this_model)]],
-                                       e2 = res[[which(input_scores == this_score)]][[which(input_models == "ecc.q")]],
+                                       e2 = res[[which(input_scores == this_score)]][[which(input_models == "gca")]],
                                        h = 1, power = 1), silent = TRUE)
         if(class(tryDM) != "try-error"){
           tmp <- tmp_DM$statistic

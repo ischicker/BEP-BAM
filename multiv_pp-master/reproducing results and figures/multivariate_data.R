@@ -3,7 +3,7 @@
 library(ggplot2)
 library(gridExtra)
 
-setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
+setwd("C:/Users/20192042/OneDrive - TU Eindhoven/University/Bachelor/Year 3/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
 
 
 groupNR <- 3

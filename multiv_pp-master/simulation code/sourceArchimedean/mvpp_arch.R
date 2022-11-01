@@ -83,7 +83,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
   params <- array(NA, dim = dim(ensfc)[1])
   chosenCopula <- array(NA, dim = dim(ensfc)[1])
   n <- dim(ensfc)[1]
-  if (method %in% c("ECC", "dECC", "GCA")) {
+  if (method %in% c("ECC", "dECC")) {
     m <- dim(ensfc)[2]
   } else {
     m <- ecc_m
@@ -235,6 +235,8 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       
       # Latent Gaussian observations
       obs_latent_gaussian <- array(NA, dim = c(timeWindow, d))
+      mean_vector <- c()
+      sd_vector <- c()
       for(dd in 1:d){
         if (!is.null(uvpp)) {
           dat <- subset(uvpp, stat == dd)
@@ -248,10 +250,12 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
           averagedSd <- par[2]
         }
         obs_latent_gaussian[,dd] <- qnorm(pnorm(obs_train[,dd], mean = averagedMean, sd = averagedSd))
+        
+        # Add for later use
+        mean_vector <- c(mean_vector, averagedMean)
+        sd_vector <- c(sd_vector, averagedSd)
       }
       
-      # print(obs_train)
-      # print(obs_latent_gaussian)
       
       
       try({
@@ -260,47 +264,52 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
         cov_obs <- cov(obs_latent_gaussian)
         # draw random sample from multivariate normal distribution with this covariance matrix
         # Make sure to get numeric values
+
+        # Dependence structure by Copula
+        mvsample <- mvrnorm(n = m, mu = mean_vector, Sigma = cov_obs)
+        mvppout[nn, , ] <- mvsample
+      }, silent=TRUE)
+      
         
-        
-        repeat {
-          # Dependence structure by Copula
-          mvsample <- mvrnorm(n = m, mu = rep(0,d), Sigma = cov_obs)
-          
-          if (all(is.finite(mvsample))) {
-            break
-          }
-          set.seed(sample(1:1000,1))
-          print("Repeating...1")
+      
+      
+      
+      if (anyNA(mvppout[nn,,])) {
+        for (dd in 1:d) {
+          mvppout[nn, , ] <- rnorm(n = m, mean = mean_vector[dd], sd = sd_vector[dd])
         }
+      } 
         
-        # impose dependence structure on post-processed forecasts
-        for(dd in 1:d){
-          if (!is.null(uvpp)) {
-            dat <- subset(uvpp, stat == dd)
-            averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
-            # print(averagedMean)
-            averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
-            # print(averagedSd)
-          } else {
-            par <- postproc_out[nn, dd, ]
-            averagedMean <- par[1]
-            averagedSd <- par[2]
-          }
-          # Using log=T to capture outliers (that otherwise get an infinite value)
-          temp <- qnorm( pnorm(mvsample[, dd]) , mean = averagedMean, sd = averagedSd)
-          if (all(is.finite((temp)))) {
-            mvppout[nn, , dd] <- temp
-          } else {
-            mvppout[nn, , dd] <- ensfc[nn, , dd]
-          }
-        }
-      })
-      a <- ensfc[nn, ,] # Should the procedures not work
-      b <- mvppout[nn, ,]  
-      if (any(is.na(b)) || any(is.infinite(b))) {
-        mvppout[nn, ,] <- a
-      }
+        
+        
+        
+        # # impose dependence structure on post-processed forecasts
+        # for(dd in 1:d){
+        #   if (!is.null(uvpp)) {
+        #     dat <- subset(uvpp, stat == dd)
+        #     averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+        #     # print(averagedMean)
+        #     averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+        #     # print(averagedSd)
+        #   } else {
+        #     par <- postproc_out[nn, dd, ]
+        #     averagedMean <- par[1]
+        #     averagedSd <- par[2]
+        #   }
+        #   # Using log=T to capture outliers (that otherwise get an infinite value)
+        #   temp <- qnorm( pnorm(mvsample[, dd]) , mean = averagedMean, sd = averagedSd)
+        #   if (all(is.finite((temp)))) {
+        #     mvppout[nn, , dd] <- temp
+        #   } else {
+        #     mvppout[nn, , dd] <- ensfc[nn, , dd]
+        #   }
+        # }
+        
+        
+        
+      
     }
+    .GlobalEnv$t <- mvppout
     
     # end of GCA code 
   }
