@@ -1,26 +1,27 @@
-# rm(list=ls())
-# 
-# library(ggplot2)
-# library(ggpubr)
-# library(purrr)
-# library(qqplotr)
-# 
-# 
-# setwd("C:/Users/20192042/OneDrive - TU Eindhoven/University/Bachelor/Year 3/BEP - BAM/Code/multiv_pp-master/simulation code")
-# 
-# # "source" files for functions
-# dir <- "./sourceArchimedean/"
-# source(paste0(dir, "postprocess_ensfc_arch.R"))
-# source(paste0(dir, "mvpp_arch.R"))
-# source(paste0(dir, "evaluation_functions_arch.R"))
-# source(paste0(dir, "CopulaParameter.R"))
-# source(paste0(dir, "mvpp_data_copula_study.R"))
-# source("ECC_T2M_Emos_subfunctions.R")
-# 
-# 
-# # Load data
-# source("getData.R")
-# getData()
+rm(list=ls())
+
+library(ggplot2)
+library(ggpubr)
+library(purrr)
+library(qqplotr)
+library("here")
+
+
+setwd(paste0(here("multiv_pp-master"), "/simulation code"))
+
+# "source" files for functions
+dir <- "./sourceArchimedean/"
+source(paste0(dir, "postprocess_ensfc_arch.R"))
+source(paste0(dir, "mvpp_arch.R"))
+source(paste0(dir, "evaluation_functions_arch.R"))
+source(paste0(dir, "CopulaParameter.R"))
+source(paste0(dir, "mvpp_data_copula_study.R"))
+source("ECC_T2M_Emos_subfunctions.R")
+
+
+# Load data
+source("getData.R")
+getData()
 
 
 
@@ -441,16 +442,13 @@ res <- run_processing(data3, trainingDays, progress_ind = TRUE)
 savename <- paste0(saveDir, "Res_group_3", ".Rdata")
 save(res, file = savename)
 
-# res <- run_processing(data4, trainingDays, progress_ind = TRUE)
-# savename <- paste0(saveDir, "Res_group_4", ".Rdata")
-# save(res, file = savename)
-# 
-# res <- run_processing(data5, trainingDays, progress_ind = TRUE)
-# savename <- paste0(saveDir, "Res_group_5", ".Rdata")
-# save(res, file = savename)
+res <- run_processing(data4, trainingDays, progress_ind = TRUE)
+savename <- paste0(saveDir, "Res_group_4", ".Rdata")
+save(res, file = savename)
 
-for (i in 1:825) {
-  print(paste0(i,": ", anyNA(t[i,,])))
-}
+res <- run_processing(data5, trainingDays, progress_ind = TRUE)
+savename <- paste0(saveDir, "Res_group_5", ".Rdata")
+save(res, file = savename)
+
 
 

@@ -1,3 +1,4 @@
+library("here")
 
 getData <- function() {
   
@@ -12,7 +13,8 @@ getData <- function() {
   # ytime = initial + 1
   # inca (Integrated Nowcasting through Comprehensive Analyses) contains the observations
   # cosmo (Consortium for Small-scale Modeling) another forecast
-  setwd("C:/Users/20192042/OneDrive - TU Eindhoven/University/Bachelor/Year 3/BEP - BAM/Code/multiv_pp-master/simulation code")
+
+  setwd(paste0(here("multiv_pp-master"), "/simulation code"))
   
   # Data file names
   fName2013 <- "INPUT-DATA_temp_2013071000-2016033000"
@@ -74,8 +76,8 @@ getData <- function() {
   group1 <- c(188, 189, 191)
   group2 <- c(64, 169, 188)
   group3 <- c(19, 150, 172)
-  group4 <- match(c(11367, 11077, 11333), statNR)
-  group5 <- match(c(11007, 11036, 11001), statNR)
+  group4 <- match(c(11024, 11077, 11022), statNR)
+  group5 <- match(c(11007, 11036, 11056), statNR)
   
   # Select the data for those groups
   data1 <- subset(data, stat %in% statNR[group1])

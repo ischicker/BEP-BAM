@@ -3,11 +3,14 @@
 
 # rm(list=ls())
 
-setwd("C:/Users/20192042/OneDrive - TU Eindhoven/University/Bachelor/Year 3/BEP - BAM/Code/multiv_pp-master/processing code for simulation output")
+library("here")
 
 
+setwd(paste0(here("multiv_pp-master"), "/processing code for simulation output"))
 
-groupNR <- 3
+
+groupNR <- 5
+benchmark <- "ssh"
 fName <- paste0("Res_group_", groupNR)
 load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
 
@@ -31,7 +34,7 @@ for(this_model in input_models){
 
       tmp <- NA
       tryDM <- try(tmp_DM <- dm.test(e1 = res[[which(input_scores == this_score)]][[which(input_models == this_model)]],
-                                     e2 = res[[which(input_scores == this_score)]][[which(input_models == "gca")]],
+                                     e2 = res[[which(input_scores == this_score)]][[which(input_models == benchmark)]],
                                      h = 1, power = 1), silent = TRUE)
       if(class(tryDM) != "try-error"){
         tmp <- tmp_DM$statistic
@@ -42,7 +45,7 @@ for(this_model in input_models){
     } else{
         tmp <- NA
         tryDM <- try(tmp_DM <- dm.test(e1 = res[[which(input_scores == this_score)]][[which(input_models == this_model)]],
-                                       e2 = res[[which(input_scores == this_score)]][[which(input_models == "gca")]],
+                                       e2 = res[[which(input_scores == this_score)]][[which(input_models == benchmark)]],
                                        h = 1, power = 1), silent = TRUE)
         if(class(tryDM) != "try-error"){
           tmp <- tmp_DM$statistic

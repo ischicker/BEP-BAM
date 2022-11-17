@@ -2,11 +2,13 @@
 
 library(ggplot2)
 library(gridExtra)
+library("here")
 
-setwd("C:/Users/20192042/OneDrive - TU Eindhoven/University/Bachelor/Year 3/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
+
+setwd(paste0(here("multiv_pp-master"),"/reproducing results and figures"))
 
 
-groupNR <- 3
+groupNR <- 5
 fName <- paste0("Res_group_", groupNR)
 load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
 
@@ -48,18 +50,18 @@ df1 <- subset(df1_save, model != "ens")
 # model_vec <- c("dECC", "ECC-Q", "ECC-S", "GCA", "SSh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal")
 
 # also drop EMOS.Q, GOF, ECC methods and GCA
-df2 <- subset(df1, model != "emos.q" & model != "GOF" & model != "decc.q" & model != "ecc.q" & model != "ecc.s" & model != "gca")
+df2 <- subset(df1, model != "emos.q" & model != "GOF" & model != "decc.q" & model != "ecc.q" & model != "ecc.s" & model != "ssh")
 
 mypal <- colorspace::rainbow_hcl(10)
-mypal_use <- c("ssh" = mypal[1],
+mypal_use <- c("gca" = mypal[1],
                "Clayton" = mypal[2],
                "Frank" = mypal[3],
                "Gumbel" = mypal[4],
                "Surv_Gumbel" = mypal[5],
                "Seasonal" = mypal[6])
 
-df2$model <- factor(df2$model, levels = c("ssh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal"))
-model_vec <- c("SSh", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal")
+df2$model <- factor(df2$model, levels = c("gca", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal"))
+model_vec <- c("GCA", "Clayton", "Frank", "Gumbel","Surv_Gumbel", "Seasonal")
 
 ylimitFunc <- function(val1, val2) {
   return(1.5 * max(abs(val1), abs(val2)))

@@ -18,8 +18,10 @@
 #  leadtime and stations are fixed 
 #  (adjusted from Moritz's code)
 #####################################################################
+library("here")
 
-setwd("C:/Users/20192042/OneDrive - TU Eindhoven/University/Bachelor/Year 3/BEP - BAM/Code/multiv_pp-master/simulation code")
+
+setwd(paste0(here("multiv_pp-master"), "/simulation code"))
 source("emos_T2M_mean_singleForecast_subfunctions-orig.R")
 
 emos_T2M_mean_singleForecast<-function(data.lt, trainingDays){

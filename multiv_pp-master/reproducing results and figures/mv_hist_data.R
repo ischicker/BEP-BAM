@@ -5,9 +5,11 @@ library(purrr)
 library(qqplotr)
 library(fields)
 library(vegan)
+library(here)
 
-setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
-groupNR <- 3
+setwd(paste0(here("multiv_pp-master"), "/reproducing results and figures"))
+
+groupNR <- 5
 fName <- paste0("Res_group_", groupNR)
 load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
 
@@ -142,6 +144,7 @@ mvr.histogram <- function(modelName, histType, d = 1)
   
   # hist(x,breaks=seq(0,20,by=1),main="",xlab=hist_xlab,ylab=hist_ylab,axes=FALSE,col="gray40",border="white",ylim=hist_ylim)
   # ggplot(dfplot, aes(model, value, colour = model))
+  m <- dim(dat[[modelName]])[2]
   intercept <- days/(m+1)
   highestValue <- max(sapply(1:(m+1), FUN = function(s) sum(x == s)))
 
