@@ -74,6 +74,29 @@ dsurv_norm <- function(x, mean=0, sd=1) {
   return(-dnorm(x,mean=mean, sd=sd))
 }
 
+getCentralDays <- function(value, minRange, maxRange) {
+  DAYS_PER_YEAR <- 365
+  
+  # Find smallest value
+  smallest_value <- as.integer(value - DAYS_PER_YEAR * floor((value - minRange) / DAYS_PER_YEAR))
+  
+  # Find largest value
+  largest_value <- as.integer(value + DAYS_PER_YEAR * floor((maxRange - value) / DAYS_PER_YEAR))
+  
+  return(seq(smallest_value, largest_value, by = DAYS_PER_YEAR))
+}
+
+getIntervals <- function(day, minRange, maxRange, interval_length) {
+  central_days <- getCentralDays(day, minRange, maxRange)
+  
+  intervals <- unlist(lapply(central_days, function(x) {
+    seq(max(minRange, x - interval_length), min(maxRange, x + interval_length))
+  }))
+  
+  return(intervals)
+}
+
+
 library(copula)
 mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL, timeWindow, ecc_m, uvpp = NULL){
   
@@ -170,7 +193,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
     }
   
   # Schaake shuffle code
-  if(method == "SSh"){
+  if(method == "SSh-H"){
     # if no EMOS_sample to base SSh on is given, recursively call 'mvpp' to generate such a sample
     if(is.null(EMOS_sample)){
       if(is.null(variant)){
@@ -200,7 +223,39 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       }
     }
     # end of SSh code   
+  }
+  
+  if(method == "SSh-I14"){
+    # if no EMOS_sample to base SSh on is given, recursively call 'mvpp' to generate such a sample
+    if(is.null(EMOS_sample)){
+      if(is.null(variant)){
+        stop("if no 'EMOS_sample' is given, 'variant' has to be specified to generate a new one")
+      }
+      EMOS_sample <- mvpp(method = "EMOS", variant = variant, postproc_out = postproc_out,
+                          ensfc = ensfc, ensfc_init = ensfc_init, 
+                          obs = obs, obs_init = obs_init, ecc_m = ecc_m)
+      message("no 'EMOS_sample' given for SSh, a new one is generated")
+    } else if(!is.null(variant)){
+      message("'variant' parameter has no influence if EMOS_sample is supplied, 
+              make sure the EMOS_sample is produced with the desired variant")
     }
+    
+    # concatenate obs_init and obs arrays to sample from available forecast cases later on
+    obs_all <- rbind(obs_init, obs)
+    
+    # reorder post-processed forecast sample according to past observations
+    for(nn in 1:n){
+      # choose set of past forecast cases to determine dependence template
+      #   ... this way, a new set of IDs is drawn for every forecast instance
+      #   ... this needs to depend on nn in a more suitable manner if there is temporal change in the simulation setup
+      obs_IDs <- sample(x = getIntervals(nn, 1, dim(obs_all)[1], 14), size = m, replace = FALSE)
+      for(dd in 1:d){
+        obs_tmp <- obs_all[obs_IDs, dd]
+        mvppout[nn, , dd] <- EMOS_sample[nn, , dd][rank(obs_tmp, ties.method = "random")]
+      }
+    }
+    # end of SSh code   
+  }
   
   # GCA code
   if(method == "GCA"){
@@ -230,84 +285,40 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       
       # # Only last measurements
       obs_train <- obs_all[(dim(obs_init)[1]+nn - timeWindow):(dim(obs_init)[1]+nn-1), ]
-      # obs_train <- EMOS_Q_sample[(dim(obs_init)[1]+nn - timeWindow):(dim(obs_init)[1]+nn-1), ]
-      # print(dim(obs_init))
       
       # Latent Gaussian observations
-      obs_latent_gaussian <- array(NA, dim = c(timeWindow, d))
-      mean_vector <- c()
-      sd_vector <- c()
+      obs_latent_gaussian <- c()
+      mean_values <- c()
+      sd_values <- c()
       for(dd in 1:d){
-        if (!is.null(uvpp)) {
-          dat <- subset(uvpp, stat == dd)
-          averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
-          # print(averagedMean)
-          averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
-          # print(averagedSd)
-        } else {
-          par <- postproc_out[nn, dd, ]
-          averagedMean <- par[1]
-          averagedSd <- par[2]
-        }
-        obs_latent_gaussian[,dd] <- qnorm(pnorm(obs_train[,dd], mean = averagedMean, sd = averagedSd))
         
-        # Add for later use
-        mean_vector <- c(mean_vector, averagedMean)
-        sd_vector <- c(sd_vector, averagedSd)
+        dat <- subset(uvpp, stat == dd)
+        averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+        averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+        
+        # NEW
+        delta = 1e-3
+        obs_train_CDF_raw <- pnorm(obs_train[,dd], mean = averagedMean, sd = averagedSd)
+        obs_latent_gaussian <- cbind(obs_latent_gaussian, qnorm(pmin(pmax(obs_train_CDF_raw, delta), 1 - delta)))
+        
+        mean_values <- c(mean_values, averagedMean)
+        sd_values <- c(sd_values, averagedSd)
       }
       
-      
-      
-      try({
-      
-        # estimate covariance matrix
-        cov_obs <- cov(obs_latent_gaussian)
-        # draw random sample from multivariate normal distribution with this covariance matrix
-        # Make sure to get numeric values
+      # estimate covariance matrix
+      cov_obs <- cov(obs_latent_gaussian)
+      # draw random sample from multivariate normal distribution with this covariance matrix
+      # Make sure to get numeric values
 
-        # Dependence structure by Copula
-        mvsample <- mvrnorm(n = m, mu = mean_vector, Sigma = cov_obs)
-        mvppout[nn, , ] <- mvsample
-      }, silent=TRUE)
+      # Dependence structure by Copula
+      mvsample <- mvrnorm(n = m, mu = rep(0, d), Sigma = cov_obs)
       
+      # impose dependence structure on post-processed forecasts
+      for(dd in 1:d){
         
+        mvppout[nn, , dd] <- mvsample[, dd] * sd_values[dd] + mean_values[dd]
       
-      
-      
-      if (anyNA(mvppout[nn,,])) {
-        for (dd in 1:d) {
-          mvppout[nn, , ] <- rnorm(n = m, mean = mean_vector[dd], sd = sd_vector[dd])
-        }
-      } 
-        
-        
-        
-        
-        # # impose dependence structure on post-processed forecasts
-        # for(dd in 1:d){
-        #   if (!is.null(uvpp)) {
-        #     dat <- subset(uvpp, stat == dd)
-        #     averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
-        #     # print(averagedMean)
-        #     averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
-        #     # print(averagedSd)
-        #   } else {
-        #     par <- postproc_out[nn, dd, ]
-        #     averagedMean <- par[1]
-        #     averagedSd <- par[2]
-        #   }
-        #   # Using log=T to capture outliers (that otherwise get an infinite value)
-        #   temp <- qnorm( pnorm(mvsample[, dd]) , mean = averagedMean, sd = averagedSd)
-        #   if (all(is.finite((temp)))) {
-        #     mvppout[nn, , dd] <- temp
-        #   } else {
-        #     mvppout[nn, , dd] <- ensfc[nn, , dd]
-        #   }
-        # }
-        
-        
-        
-      
+      }
     }
     .GlobalEnv$t <- mvppout
     
@@ -452,6 +463,98 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       }
       
       # end of Archimedean Copula code
+    
+    
+    }
+  
+  # GCA from copula
+  if(method == "CopGCA"){
+    require(MASS)
+    
+    # concatenate obs_init and obs arrays to determine covariance matrix for Gaussian copulas
+    obs_all <- rbind(obs_init, obs)
+    
+    for(nn in 1:n){
+      # Use a shifting time window of length obs_init to compute copula parameters
+      obs_train <- obs_all[(dim(obs_init)[1]+nn - timeWindow):(dim(obs_init)[1]+nn-1), ]
+      
+      d <- dim(obs_train)[2]
+      # The input for the copulas are the CDF values of the margins
+      obs_train_CDF <- c()
+      mean_vector <- c()
+      sd_vector <- c()
+      for (dd in 1:d) {
+        # Use EMOS values for marginals
+        dat <- subset(uvpp, stat == dd)
+        averagedMean <- unlist(unname(dat[nn,]["ens_mu"]))
+        # print(averagedMean)
+        averagedSd <- unlist(unname(dat[nn,]["ens_sd"]))
+        # print(averagedSd)
+          
+        delta = 1e-3
+        obs_train_CDF_raw <- pnorm(obs_train[,dd], mean = averagedMean, sd = averagedSd)
+        obs_train_CDF <- cbind(obs_train_CDF, pmin(pmax(obs_train_CDF_raw, delta), 1 - delta))
+        
+        # Add for later use
+        mean_vector <- c(mean_vector, averagedMean)
+        sd_vector <- c(sd_vector, averagedSd)
+      }
+      
+      fitcop <-tryCatch({
+        fitCopula(normalCopula(dim = d, dispstr = "un"), data = obs_train_CDF, method="mpl", optim.control = list(maxit=1000))
+      }, error = function(e) {
+        print(e)
+        indepCopula(dim=d)
+      })
+      
+      if (!(class(fitcop) == "indepCopula")){
+        cop <- fitcop@copula
+      } else {
+        cop <- fitcop
+      }
+      
+      
+      # draw random sample from multivariate normal distribution with this estimated copula
+      paramMargins <- list()
+      surv_paramMargins <- list()
+      
+      for (i in 1:d){
+        paramMargins[[i]] <- list(mean = mean_vector[i], sd = sd_vector[i])
+      }
+      
+
+      mvDistribution <- mvdc(copula=cop, margins=rep("norm", d),
+                             paramMargins=paramMargins)
+
+      
+      
+      # Make sure to get numeric values
+      max_reps <- 2
+      rep <- 0
+      repeat {
+        rep <- rep + 1
+        # Dependence structure by Copula
+        mvsample <- rMvdc(m, mvDistribution)
+        
+        if (all(is.finite(mvsample)) | rep >= max_reps) {
+          break
+        }
+        
+        set.seed(sample(1:1000,1))
+        
+        # print(rep)
+        # print("Repeating...2")
+      }
+      
+      for(dd in 1:d){
+        
+        # Translate CDF values back to forecasts
+        mvppout[nn, , dd] <- mvsample[,dd]
+      }
+      
+    }
+    
+    # end of copula gca
     
     
   }

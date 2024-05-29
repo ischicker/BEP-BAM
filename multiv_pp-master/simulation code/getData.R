@@ -14,7 +14,6 @@ getData <- function() {
   # inca (Integrated Nowcasting through Comprehensive Analyses) contains the observations
   # cosmo (Consortium for Small-scale Modeling) another forecast
 
-  setwd(paste0(here("multiv_pp-master"), "/simulation code"))
   
   # Data file names
   fName2013 <- "INPUT-DATA_temp_2013071000-2016033000"

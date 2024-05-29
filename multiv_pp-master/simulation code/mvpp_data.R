@@ -1,4 +1,4 @@
-rm(list=ls())
+# rm(list=ls())
 
 library(ggplot2)
 library(ggpubr)
@@ -6,8 +6,19 @@ library(purrr)
 library(qqplotr)
 library("here")
 
+here2 <- function() {
+  args <- commandArgs(trailingOnly = FALSE)
+  if ("RStudio" %in% args) {
+    dirname(rstudioapi::getActiveDocumentContext()$path)
+  } else {
+    file_arg <- "--file="
+    filepath <- sub(file_arg, "", grep(file_arg, args, value = TRUE))
+    dirname(filepath)
+  }
+}
 
-setwd(paste0(here("multiv_pp-master"), "/simulation code"))
+
+setwd(here2())
 
 # "source" files for functions
 dir <- "./sourceArchimedean/"
@@ -16,17 +27,16 @@ source(paste0(dir, "mvpp_arch.R"))
 source(paste0(dir, "evaluation_functions_arch.R"))
 source(paste0(dir, "CopulaParameter.R"))
 source(paste0(dir, "mvpp_data_copula_study.R"))
+source(paste0(dir, "generate_trainingdays.R"))
+source(paste0(dir, "mvpp_arch_fixed_training.R"))
 source("ECC_T2M_Emos_subfunctions.R")
 
 
 # Load data
 source("getData.R")
-getData()
-
-
-
-
-
+if (!("data1" %in% names(.GlobalEnv))) {
+  getData()
+}
 
 eval_all_mult <- function(mvpp_out, obs){
   esout <- es_wrapper(mvpp_out, obs)
@@ -41,7 +51,7 @@ eval_all_mult <- function(mvpp_out, obs){
 run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   
   # Use same time window as training days for UVPP
-  timeWindow <- 30
+  timeWindow <- 50
   
   # Stations and days from the data
   stations <- unique(data$stat)
@@ -56,8 +66,13 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   ecc_m <- 50
   ensembleMembers <- sapply(1:m, FUN = function(x) paste0("laef", x))
   
+  if (fix_training_days) {
+    training_df <- getTrainingDays(trainingDays, nout, ecc_m, training_days_method)
+  }
+  
+  
   # generate objects to save scores to
-  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca","Clayton","Frank","Gumbel", "Surv_Gumbel", "Seasonal")
+  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh.h", "ssh.i", "gca", "gca.cop", "Clayton","Frank","Gumbel", "Surv_Gumbel")
   crps_list <- es_list <- vs1_list <- vs1w_list <- vs0_list <- vs0w_list <- mvpp_list <- chosenCopula_list <- list()
   
   # Timing_list stores the time needed to do all relevant computations
@@ -131,7 +146,7 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
 
   }
 
-  # .GlobalEnv$uvpp <- uvpp
+  .GlobalEnv$uvpp <- uvpp
 
   end_time <- Sys.time()
 
@@ -165,6 +180,13 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
       })
     }
   }
+  
+  .GlobalEnv$uvpp <- uvpp
+  .GlobalEnv$pp_out <- pp_out
+  .GlobalEnv$obs_init <- obs_init
+  .GlobalEnv$obs <- obs
+  .GlobalEnv$ensfc_init <- ensfc_init
+  .GlobalEnv$ensfc <- ensfc
 
   tmp <- eval_all_mult(mvpp_out = ensfc, obs = obs)
   es_list$ens <- tmp$es
@@ -173,12 +195,7 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   vs0_list$ens <- tmp$vs0
   vs0w_list$ens <- tmp$vs0w
   
-  .GlobalEnv$uvpp <- uvpp
-  .GlobalEnv$pp_out <- pp_out
-  .GlobalEnv$obs_init <- obs_init
-  .GlobalEnv$obs <- obs
-  .GlobalEnv$ensfc_init <- ensfc_init
-  .GlobalEnv$ensfc <- ensfc
+  
   
   mvpp_list$ens <- ensfc
   
@@ -286,25 +303,36 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   
   mvpp_list$decc.q <- decc.q$mvppout
   
-  print("SSh")
+  
+  
+  print("SSh-H")
   # SSh -> involves randomness -> repeat rand_rep times
   es_list_tmp <- vs1_list_tmp <- vs1w_list_tmp <-
     vs0_list_tmp <- vs0w_list_tmp <- matrix(NA, nrow = nout, ncol = rand_rep)
   crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
   timing_list_tmp <- array(NA, dim = rand_rep)
   
+  print("EMOS.Q with different m")
   # EMOS.Q with different m
   emos.q <- mvpp(method = "EMOS", variant = "Q", ensfc = ensfc, ensfc_init = ensfc_init,
                  obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m)
   
   for(RR in 1:rand_rep){
+    print(RR)
     start_time <- Sys.time()
-    ssh <- mvpp(method = "SSh", ensfc = ensfc, ensfc_init = ensfc_init,
-                obs = obs, obs_init = obs_init, postproc_out = pp_out,
-                EMOS_sample = emos.q$mvppout, timeWindow = timeWindow, ecc_m = ecc_m)
+    
+    if (fix_training_days) {
+      ssh.h <- mvpp_fixed(method = "SSh-H", ensfc = ensfc, ensfc_init = ensfc_init,
+                  obs = obs, obs_init = obs_init, postproc_out = pp_out,
+                  EMOS_sample = emos.q$mvppout, timeWindow = timeWindow, ecc_m = ecc_m, training_df = training_df)
+    } else {
+      ssh.h <- mvpp(method = "SSh-H", ensfc = ensfc, ensfc_init = ensfc_init,
+                    obs = obs, obs_init = obs_init, postproc_out = pp_out,
+                    EMOS_sample = emos.q$mvppout, timeWindow = timeWindow, ecc_m = ecc_m)
+    }
 
-    crps_list_tmp[,,RR] <- crps_wrapper(ssh$mvppout, obs)
-    tmp <- eval_all_mult(mvpp_out = ssh$mvppout, obs = obs)
+    crps_list_tmp[,,RR] <- crps_wrapper(ssh.h$mvppout, obs)
+    tmp <- eval_all_mult(mvpp_out = ssh.h$mvppout, obs = obs)
     es_list_tmp[,RR] <- tmp$es
     vs1_list_tmp[,RR] <- tmp$vs1
     vs1w_list_tmp[,RR] <- tmp$vs1w
@@ -315,15 +343,52 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
 
     timing_list_tmp[RR] <- end_time - start_time
   }
-  crps_list$ssh <- apply(crps_list_tmp, c(1,2), mean)
-  es_list$ssh <- apply(es_list_tmp, 1, mean)
-  vs1_list$ssh <- apply(vs1_list_tmp, 1, mean)
-  vs1w_list$ssh <- apply(vs1w_list_tmp, 1, mean)
-  vs0_list$ssh <- apply(vs0_list_tmp, 1, mean)
-  vs0w_list$ssh <- apply(vs0w_list_tmp, 1, mean)
-  timing_list$ssh <- apply(timing_list_tmp, 1, mean)
+  crps_list$ssh.h <- apply(crps_list_tmp, c(1,2), mean)
+  es_list$ssh.h <- apply(es_list_tmp, 1, mean)
+  vs1_list$ssh.h <- apply(vs1_list_tmp, 1, mean)
+  vs1w_list$ssh.h <- apply(vs1w_list_tmp, 1, mean)
+  vs0_list$ssh.h <- apply(vs0_list_tmp, 1, mean)
+  vs0w_list$ssh.h <- apply(vs0w_list_tmp, 1, mean)
+  timing_list$ssh.h <- apply(timing_list_tmp, 1, mean)
   
-  mvpp_list$ssh <- ssh$mvppout
+  mvpp_list$ssh.h <- ssh.h$mvppout
+  
+  print("SSH-I14")
+  
+  for(RR in 1:rand_rep){
+    start_time <- Sys.time()
+    
+    if (fix_training_days) {
+      ssh.i <- mvpp_fixed(method = "SSh-I14", ensfc = ensfc, ensfc_init = ensfc_init,
+                    obs = obs, obs_init = obs_init, postproc_out = pp_out,
+                    EMOS_sample = emos.q$mvppout, timeWindow = timeWindow, ecc_m = ecc_m, training_df = training_df)
+    } else {
+      ssh.i <- mvpp(method = "SSh-I14", ensfc = ensfc, ensfc_init = ensfc_init,
+                    obs = obs, obs_init = obs_init, postproc_out = pp_out,
+                    EMOS_sample = emos.q$mvppout, timeWindow = timeWindow, ecc_m = ecc_m)
+    }
+    
+    crps_list_tmp[,,RR] <- crps_wrapper(ssh.i$mvppout, obs)
+    tmp <- eval_all_mult(mvpp_out = ssh.i$mvppout, obs = obs)
+    es_list_tmp[,RR] <- tmp$es
+    vs1_list_tmp[,RR] <- tmp$vs1
+    vs1w_list_tmp[,RR] <- tmp$vs1w
+    vs0_list_tmp[,RR] <- tmp$vs0
+    vs0w_list_tmp[,RR] <- tmp$vs0w
+    
+    end_time <- Sys.time()
+    
+    timing_list_tmp[RR] <- end_time - start_time
+  }
+  crps_list$ssh.i <- apply(crps_list_tmp, c(1,2), mean)
+  es_list$ssh.i <- apply(es_list_tmp, 1, mean)
+  vs1_list$ssh.i <- apply(vs1_list_tmp, 1, mean)
+  vs1w_list$ssh.i <- apply(vs1w_list_tmp, 1, mean)
+  vs0_list$ssh.i <- apply(vs0_list_tmp, 1, mean)
+  vs0w_list$ssh.i <- apply(vs0w_list_tmp, 1, mean)
+  timing_list$ssh.i <- apply(timing_list_tmp, 1, mean)
+  
+  mvpp_list$ssh.i <- ssh.i$mvppout
 
   print("GCA")
   # GCA -> involves randomness -> repeat rand_rep times
@@ -333,8 +398,14 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   timing_list_tmp <- array(NA, dim = rand_rep)
   for(RR in 1:rand_rep){
     start_time <- Sys.time()
-    gca <- mvpp(method = "GCA", ensfc = ensfc, ensfc_init = ensfc_init,
-                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp)
+    
+    if (fix_training_days) {
+      gca <- mvpp_fixed(method = "GCA", ensfc = ensfc, ensfc_init = ensfc_init,
+                  obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp, training_df = training_df)
+    } else {
+      gca <- mvpp(method = "GCA", ensfc = ensfc, ensfc_init = ensfc_init,
+                  obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp)
+    }
 
     .GlobalEnv$tt <- gca$mvppout
     
@@ -359,6 +430,47 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   timing_list$gca <- apply(timing_list_tmp, 1, mean)
   
   mvpp_list$gca <- gca$mvppout
+  
+  print("CopGCA")
+  # GCA -> involves randomness -> repeat rand_rep times
+  es_list_tmp <- vs1_list_tmp <- vs1w_list_tmp <-
+    vs0_list_tmp <- vs0w_list_tmp <- matrix(NA, nrow = nout, ncol = rand_rep)
+  crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
+  timing_list_tmp <- array(NA, dim = rand_rep)
+  for(RR in 1:rand_rep){
+    start_time <- Sys.time()
+    
+    if (fix_training_days) {
+      gca.cop <- mvpp_fixed(method = "CopGCA", ensfc = ensfc, ensfc_init = ensfc_init,
+                      obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp, training_df = training_df)
+    } else {
+      gca.cop <- mvpp(method = "CopGCA", ensfc = ensfc, ensfc_init = ensfc_init,
+                      obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp)
+    }
+    
+    .GlobalEnv$tt <- gca.cop$mvppout
+    
+    crps_list_tmp[,,RR] <- crps_wrapper(gca.cop$mvppout, obs)
+    tmp <- eval_all_mult(mvpp_out = gca.cop$mvppout, obs = obs)
+    es_list_tmp[,RR] <- tmp$es
+    vs1_list_tmp[,RR] <- tmp$vs1
+    vs1w_list_tmp[,RR] <- tmp$vs1w
+    vs0_list_tmp[,RR] <- tmp$vs0
+    vs0w_list_tmp[,RR] <- tmp$vs0w
+    
+    end_time <- Sys.time()
+    
+    timing_list_tmp[RR] <- end_time - start_time
+  }
+  crps_list$gca.cop <- apply(crps_list_tmp, c(1,2), mean)
+  es_list$gca.cop <- apply(es_list_tmp, 1, mean)
+  vs1_list$gca.cop <- apply(vs1_list_tmp, 1, mean)
+  vs1w_list$gca.cop <- apply(vs1w_list_tmp, 1, mean)
+  vs0_list$gca.cop <- apply(vs0_list_tmp, 1, mean)
+  vs0w_list$gca.cop <- apply(vs0w_list_tmp, 1, mean)
+  timing_list$gca.cop <- apply(timing_list_tmp, 1, mean)
+  
+  mvpp_list$gca.cop <- gca.cop$mvppout
 
   # Archimedean copulas -> involves randomness -> repeat rand_rep times
   for (method in c("Surv_Gumbel", "Clayton","Frank", "Gumbel")) {
@@ -367,22 +479,28 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
 
       
     start_time <- Sys.time()
-    mvd <- mvpp(method = method, ensfc = ensfc, ensfc_init = ensfc_init,
-                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp)
+    
+    if (fix_training_days) {
+      mvd <- mvpp_fixed(method = method, ensfc = ensfc, ensfc_init = ensfc_init,
+                obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp, training_df = training_df)
+    } else {
+      mvd <- mvpp(method = method, ensfc = ensfc, ensfc_init = ensfc_init,
+                  obs = obs, obs_init = obs_init, postproc_out = pp_out, timeWindow = timeWindow, ecc_m = ecc_m, uvpp = uvpp)
+    }
     
     chosenCopula_list[[method]] <- mvd$chosenCopula
     
-    good_rows <- !unname(apply(mvd$mvppout, MARGIN = 1, FUN = function(x) any(is.na(x))))
-    score_mvppout <- mvd$mvppout[good_rows,,]
-    score_obs <- obs[good_rows,]
+    # good_rows <- !unname(apply(mvd$mvppout, MARGIN = 1, FUN = function(x) any(is.na(x))))
+    # score_mvppout <- mvd$mvppout[good_rows,,]
+    # score_obs <- obs[good_rows,]
 
-    crps_list[[method]][good_rows,] <- crps_wrapper(score_mvppout, score_obs)
-    tmp <- eval_all_mult(mvpp_out = score_mvppout, obs = score_obs)
-    es_list[[method]][good_rows] <- tmp$es
-    vs1_list[[method]][good_rows] <- tmp$vs1
-    vs1w_list[[method]][good_rows] <- tmp$vs1w
-    vs0_list[[method]][good_rows] <- tmp$vs0
-    vs0w_list[[method]][good_rows] <- tmp$vs0w
+    crps_list[[method]] <- crps_wrapper(mvd$mvppout, obs)
+    tmp <- eval_all_mult(mvpp_out = mvd$mvppout, obs = obs)
+    es_list[[method]] <- tmp$es
+    vs1_list[[method]] <- tmp$vs1
+    vs1w_list[[method]] <- tmp$vs1w
+    vs0_list[[method]] <- tmp$vs0
+    vs0w_list[[method]] <- tmp$vs0w
     
     mvpp_list[[method]] <- mvd$mvppout
 
@@ -393,30 +511,30 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   }
   
   # Seasonal copula MVPP
-  print("Seasonal")
-  start_time <- Sys.time()
-  
-  mvd <- seasonal_copula(data, ensfc = ensfc, obs = obs, obs_init = obs_init, postproc_out = pp_out, ecc_m = ecc_m)
-  
-  good_rows <- !unname(apply(mvd$mvppout, MARGIN = 1, FUN = function(x) any(is.na(x))))
-  score_mvppout <- mvd$mvppout[good_rows,,]
-  score_obs <- obs[good_rows,]
-  
-  crps_list[["Seasonal"]][good_rows,] <- crps_wrapper(score_mvppout, score_obs)
-  tmp <- eval_all_mult(mvpp_out = score_mvppout, obs = score_obs)
-  es_list[["Seasonal"]][good_rows] <- tmp$es
-  vs1_list[["Seasonal"]][good_rows] <- tmp$vs1
-  vs1w_list[["Seasonal"]][good_rows] <- tmp$vs1w
-  vs0_list[["Seasonal"]][good_rows] <- tmp$vs0
-  vs0w_list[["Seasonal"]][good_rows] <- tmp$vs0w
-  
-  mvpp_list[["Seasonal"]] <- mvd$mvppout
-  
-  end_time <- Sys.time()
-  
-  timing_list[["Seasonal"]] <- end_time - start_time
-  
-  copula_df <- mvd$copula_df
+  # print("Seasonal")
+  # start_time <- Sys.time()
+  # 
+  # mvd <- seasonal_copula(data, ensfc = ensfc, obs = obs, obs_init = obs_init, postproc_out = pp_out, ecc_m = ecc_m)
+  # 
+  # good_rows <- !unname(apply(mvd$mvppout, MARGIN = 1, FUN = function(x) any(is.na(x))))
+  # score_mvppout <- mvd$mvppout[good_rows,,]
+  # score_obs <- obs[good_rows,]
+  # 
+  # crps_list[["Seasonal"]][good_rows,] <- crps_wrapper(score_mvppout, score_obs)
+  # tmp <- eval_all_mult(mvpp_out = score_mvppout, obs = score_obs)
+  # es_list[["Seasonal"]][good_rows] <- tmp$es
+  # vs1_list[["Seasonal"]][good_rows] <- tmp$vs1
+  # vs1w_list[["Seasonal"]][good_rows] <- tmp$vs1w
+  # vs0_list[["Seasonal"]][good_rows] <- tmp$vs0
+  # vs0w_list[["Seasonal"]][good_rows] <- tmp$vs0w
+  # 
+  # mvpp_list[["Seasonal"]] <- mvd$mvppout
+  # 
+  # end_time <- Sys.time()
+  # 
+  # timing_list[["Seasonal"]] <- end_time - start_time
+  # 
+  # copula_df <- mvd$copula_df
   
   
   print("Returning Output")
@@ -424,15 +542,28 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   out <- list("crps_list" = crps_list, "es_list" = es_list, "vs1_list" = vs1_list,
               "vs1w_list" = vs1w_list, "vs0_list" = vs0_list, "vs0w_list" = vs0w_list, 
               "timing_list" = timing_list, "mvpp_list" = mvpp_list, "chosenCopula_list" = chosenCopula_list,
-              "obs" = obs, "copula_df" = copula_df)
+              "obs" = obs)
   return(out)
 }
+
+fix_training_days <- FALSE
+training_days_method <- "random_2w_interval"
+
 trainingDays <- 365
 saveDir <- "./../Data/Rdata_LAEF/"
+
+# for (fix_training_days in c(TRUE, FALSE)) {
+#   if (fix_training_days) {
+#     for (training_days_method in c("random_past", "last_m_days", "random_2w_interval")) {
+
+if (fix_training_days) {
+  saveDir <- paste0(saveDir, training_days_method)
+}
 
 res <- run_processing(data1, trainingDays, progress_ind = TRUE)
 savename <- paste0(saveDir, "Res_group_1", ".Rdata")
 save(res, file = savename)
+
 
 res <- run_processing(data2, trainingDays, progress_ind = TRUE)
 savename <- paste0(saveDir, "Res_group_2", ".Rdata")
@@ -449,6 +580,7 @@ save(res, file = savename)
 res <- run_processing(data5, trainingDays, progress_ind = TRUE)
 savename <- paste0(saveDir, "Res_group_5", ".Rdata")
 save(res, file = savename)
+
 
 
 

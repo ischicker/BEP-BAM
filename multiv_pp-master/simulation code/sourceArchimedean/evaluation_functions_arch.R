@@ -60,7 +60,7 @@ vs_wrapper <- function(mvpp_out, obs, weight, p){
   n <- dim(mvpp_out)[1]
   out <- vector(length = n)
   for(nn in 1:n){
-    out[nn] <- vs_sample(y = obs[nn,], dat = t(mvpp_out[nn,,]), w = w, p = p)
+    out[nn] <- vs_sample(y = obs[nn,], dat = t(mvpp_out[nn,,]), w_vs = w, p = p)
   }
   out
 }

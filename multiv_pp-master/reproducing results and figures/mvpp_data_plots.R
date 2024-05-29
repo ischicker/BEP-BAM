@@ -5,7 +5,18 @@ library(ggpubr)
 library(purrr)
 library(qqplotr)
 
-setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/reproducing results and figures")
+here2 <- function() {
+  args <- commandArgs(trailingOnly = FALSE)
+  if ("RStudio" %in% args) {
+    dirname(rstudioapi::getActiveDocumentContext()$path)
+  } else {
+    file_arg <- "--file="
+    filepath <- sub(file_arg, "", grep(file_arg, args, value = TRUE))
+    dirname(filepath)
+  }
+}
+
+setwd(here2())
 groupNR <- 2
 fName <- paste0("Res_group_", groupNR)
 load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
@@ -22,13 +33,12 @@ resolution <- 400
 savePlots <- function(fileName, plot) {
   ggsave(
     paste0(plot_folder, fileName),
-    plot,
+    plot = plot,
     width = plotWidth,
     height = plotHeight,
     dpi = resolution
   )
 }
-
 
 
 ## PIT diagrams (number of bins = m)

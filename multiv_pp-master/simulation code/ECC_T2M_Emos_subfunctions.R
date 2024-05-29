@@ -18,10 +18,19 @@
 #  leadtime and stations are fixed 
 #  (adjusted from Moritz's code)
 #####################################################################
-library("here")
+here2 <- function() {
+  args <- commandArgs(trailingOnly = FALSE)
+  if ("RStudio" %in% args) {
+    dirname(rstudioapi::getActiveDocumentContext()$path)
+  } else {
+    file_arg <- "--file="
+    filepath <- sub(file_arg, "", grep(file_arg, args, value = TRUE))
+    dirname(filepath)
+  }
+}
 
 
-setwd(paste0(here("multiv_pp-master"), "/simulation code"))
+setwd(here2())
 source("emos_T2M_mean_singleForecast_subfunctions-orig.R")
 
 emos_T2M_mean_singleForecast<-function(data.lt, trainingDays){
