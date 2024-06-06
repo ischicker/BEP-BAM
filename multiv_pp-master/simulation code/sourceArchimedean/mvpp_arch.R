@@ -248,7 +248,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       # choose set of past forecast cases to determine dependence template
       #   ... this way, a new set of IDs is drawn for every forecast instance
       #   ... this needs to depend on nn in a more suitable manner if there is temporal change in the simulation setup
-      obs_IDs <- sample(x = getIntervals(nn, 1, dim(obs_all)[1], 14), size = m, replace = FALSE)
+      obs_IDs <- sample(x = getIntervals(nn, 1, dim(obs_all)[1], 28), size = m, replace = FALSE)
       for(dd in 1:d){
         obs_tmp <- obs_all[obs_IDs, dd]
         mvppout[nn, , dd] <- EMOS_sample[nn, , dd][rank(obs_tmp, ties.method = "random")]

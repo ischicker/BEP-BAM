@@ -46,7 +46,7 @@ mvpp_fixed <- function(method, ensfc, ensfc_init, obs, obs_init, postproc_out,
       obs_IDs <- training_df$TrainingDays[[nn]]
       for(dd in 1:d){
         obs_tmp <- obs_all[obs_IDs, dd]
-        mvppout[nn, , dd] <- EMOS_sample[nn, , dd][rank(obs_tmp, ties.method = "first")]
+        mvppout[nn, , dd] <- EMOS_sample[nn, , dd][rank(obs_tmp, ties.method = "random")]
       }
     }
     # end of SSh code   
@@ -65,7 +65,7 @@ mvpp_fixed <- function(method, ensfc, ensfc_init, obs, obs_init, postproc_out,
       obs_IDs <- training_df$TrainingDays[[nn]]
       for(dd in 1:d){
         obs_tmp <- obs_all[obs_IDs, dd]
-        mvppout[nn, , dd] <- EMOS_sample[nn, , dd][rank(obs_tmp, ties.method = "first")]
+        mvppout[nn, , dd] <- EMOS_sample[nn, , dd][rank(obs_tmp, ties.method = "random")]
       }
     }
     # end of SSh code   

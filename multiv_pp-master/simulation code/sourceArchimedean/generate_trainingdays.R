@@ -45,7 +45,7 @@ getTrainingDays <- function(initial_days, n, m, method) {
   } else if (method == "random_2w_interval") {
     for (nn in 1:n) {
       
-      obs_IDs <- sample(x = getIntervals(nn, 1, n, 14), size = m, replace = FALSE)
+      obs_IDs <- sample(x = getIntervals(nn, 1, n, 28), size = m, replace = FALSE)
       
       out$TrainingDays[[nn]] <- obs_IDs
       

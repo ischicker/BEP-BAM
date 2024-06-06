@@ -1,10 +1,10 @@
 library(MASS)
 library(copula)
 
-set.seed(1)
+set.seed(2)
 
 # Generate data
-n <- 10000
+n <- 50
 S <- matrix(c(2, 0.5, 0.2,
               0.5, 1, 0.3,
               0.2, 0.3, 3), 
@@ -46,6 +46,8 @@ X_copula <- rMvdc(n, mvDistribution)
 print("-- Copula package --")
 print("Covariance matrix:")
 print(cov(X_copula))
+print("Correlation matrix:")
+print(cor(X_copula))
 print("SSE:")
 print(sum((cov(X_copula) - S)^2))
 print("Mean vector:")

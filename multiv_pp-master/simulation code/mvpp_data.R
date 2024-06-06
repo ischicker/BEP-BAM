@@ -48,10 +48,7 @@ eval_all_mult <- function(mvpp_out, obs){
 }
 
 
-run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
-  
-  # Use same time window as training days for UVPP
-  timeWindow <- 50
+run_processing <- function(data, trainingDays, progress_ind = FALSE, timeWindow, fix_training_days, training_days_method){
   
   # Stations and days from the data
   stations <- unique(data$stat)
@@ -63,7 +60,7 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   
   # Ensemble members
   m <- sum(grepl("laef", names(data)))
-  ecc_m <- 50
+  ecc_m <- timeWindow
   ensembleMembers <- sapply(1:m, FUN = function(x) paste0("laef", x))
   
   if (fix_training_days) {
@@ -546,41 +543,70 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, ...){
   return(out)
 }
 
-fix_training_days <- FALSE
-training_days_method <- "random_2w_interval"
+# fix_training_days <- FALSE
+# training_days_method <- "random_2w_interval"
 
-trainingDays <- 365
-saveDir <- "./../Data/Rdata_LAEF/"
 
-# for (fix_training_days in c(TRUE, FALSE)) {
-#   if (fix_training_days) {
-#     for (training_days_method in c("random_past", "last_m_days", "random_2w_interval")) {
 
-if (fix_training_days) {
-  saveDir <- paste0(saveDir, training_days_method)
+compute_res <-function(trainingDays, timeWindow, fix_training_days, training_days_method) {
+  saveDir <- "./../Data/Rdata_LAEF/"
+  saveDir <- paste0(saveDir, "m_", timeWindow, "_")
+  
+  if (fix_training_days) {
+    saveDir <- paste0(saveDir, training_days_method, "_")
+  }
+  
+  print(paste0("Start processing for directory: ", saveDir))
+  
+  print("")
+  print("Group 1")
+  print("")
+  res <- run_processing(data1, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  savename <- paste0(saveDir, "Res_group_1", ".Rdata")
+  save(res, file = savename)
+  
+  print("")
+  print("Group 2")
+  print("")
+  res <- run_processing(data2, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  savename <- paste0(saveDir, "Res_group_2", ".Rdata")
+  save(res, file = savename)
+  
+  print("")
+  print("Group 3")
+  print("")
+  res <- run_processing(data3, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  savename <- paste0(saveDir, "Res_group_3", ".Rdata")
+  save(res, file = savename)
+  
+  print("")
+  print("Group 4")
+  print("")
+  res <- run_processing(data4, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  savename <- paste0(saveDir, "Res_group_4", ".Rdata")
+  save(res, file = savename)
+  
+  print("")
+  print("Group 5")
+  print("")
+  res <- run_processing(data5, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  savename <- paste0(saveDir, "Res_group_5", ".Rdata")
+  save(res, file = savename)
 }
 
-res <- run_processing(data1, trainingDays, progress_ind = TRUE)
-savename <- paste0(saveDir, "Res_group_1", ".Rdata")
-save(res, file = savename)
+trainingDays <- 365
+
+for (fix_training_days in c(TRUE, FALSE)) {
+  if (fix_training_days) {
+    for (training_days_method in c("random_2w_interval")) {
+
+      compute_res(trainingDays, 100, fix_training_days, training_days_method)
+
+    }
+  } else {
+    compute_res(trainingDays, 100, fix_training_days, training_days_method)
+  }
+}
 
 
-res <- run_processing(data2, trainingDays, progress_ind = TRUE)
-savename <- paste0(saveDir, "Res_group_2", ".Rdata")
-save(res, file = savename)
-
-res <- run_processing(data3, trainingDays, progress_ind = TRUE)
-savename <- paste0(saveDir, "Res_group_3", ".Rdata")
-save(res, file = savename)
-
-res <- run_processing(data4, trainingDays, progress_ind = TRUE)
-savename <- paste0(saveDir, "Res_group_4", ".Rdata")
-save(res, file = savename)
-
-res <- run_processing(data5, trainingDays, progress_ind = TRUE)
-savename <- paste0(saveDir, "Res_group_5", ".Rdata")
-save(res, file = savename)
-
-
-
-
+compute_res(trainingDays, 100, FALSE, training_days_method)
