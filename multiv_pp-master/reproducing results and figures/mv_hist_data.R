@@ -7,34 +7,9 @@ library(fields)
 library(vegan)
 library(here)
 
-setwd(paste0(here("multiv_pp-master"), "/reproducing results and figures"))
-
-groupNR <- 5
-fName <- paste0("Res_group_", groupNR)
-load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
-
-dat <- res$mvpp_list
-obs <- res$obs
-rm(res)
-
-days <- dim(dat$ens)[1]
-m <- dim(dat$ens)[2]
-
-plotTheme <- theme(axis.text=element_text(size=7),
-                   axis.title=element_text(size=18,face="bold"),
-                   plot.title = element_text(size=22,hjust = 0.5))
-
-# Save settings
-# Create and save the Multivariate histogram plots
-plot_folder <- paste0("../Data/Plots/Group ", groupNR, "/Rank Histograms/")
-dir.create(file.path(plot_folder), showWarnings = FALSE)
-plot_vec <- c()
-plotWidth <-  8
-plotHeight <- 8
-resolution <- 250
 
 # Function to save the plots
-savePlots <- function(fileName, plot) {
+savePlots <- function(plot_folder, fileName, plot, plotWidth, plotHeight) {
   ggsave(
     paste0(plot_folder, fileName),
     plot,
@@ -78,9 +53,6 @@ mst.rank <- function (x) {
   return(x.rank)
 }
 
-
-
-
 ## Multivariate ranks 
 mv.rank <- function(x)
 {
@@ -115,8 +87,6 @@ bd.rank <- function(x)
   return(x.rank)
 } 
 
-
-
 ## Multivariate rank histograms
 mvr.histogram <- function(modelName, histType, d = 1)
 {
@@ -145,13 +115,16 @@ mvr.histogram <- function(modelName, histType, d = 1)
   # hist(x,breaks=seq(0,20,by=1),main="",xlab=hist_xlab,ylab=hist_ylab,axes=FALSE,col="gray40",border="white",ylim=hist_ylim)
   # ggplot(dfplot, aes(model, value, colour = model))
   m <- dim(dat[[modelName]])[2]
-  intercept <- days/(m+1)
+  x <- x / (m + 1)
   highestValue <- max(sapply(1:(m+1), FUN = function(s) sum(x == s)))
 
-  p <- ggplot() + aes(x) + geom_histogram(breaks = seq(0, (m+1), 1)) +
+  numberOfBins <- 10
+  intercept <- days/numberOfBins
+
+  p <- ggplot() + aes(x) + geom_histogram(breaks = seq(0, 1, 1.0 / numberOfBins)) +
     geom_hline(yintercept = intercept, col="steelblue", linetype = "dashed") + 
-    scale_x_continuous(breaks = seq(0, (m+1) , 1), labels=round(seq(0, (m+1) , 1)/ (m+1), 2)) + 
-    scale_y_continuous(breaks = seq(0, highestValue, intercept), labels = seq(0, highestValue / intercept, 1)) +
+    scale_x_continuous(breaks = seq(0, 1, 1.0 / numberOfBins), labels=round(seq(0, 1.0, 1.0 / numberOfBins), 2)) + 
+    scale_y_continuous(breaks = seq(0, intercept, intercept), labels = seq(0, 1, 1)) +
     labs(y = "Frequency ratio", x = "Normalized rank value")
   
   
@@ -172,78 +145,78 @@ mvr.histogram <- function(modelName, histType, d = 1)
 
 }
 
-mvtypes <- c("multivariate", "average", "bandDepth", "tree")
-mvtypes <- c("multivariate")
+create_mv_plots <- function(groupNR) {
+  fName <- paste0("Res_group_", groupNR)
+  load(paste0("Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
 
-for (histType in mvtypes) {
-  savePath <- paste0(plot_folder, histType,"/")
-  dir.create(file.path(savePath), showWarnings = FALSE)
-  plotWidth <-  8
-  plotHeight <- 8
+  dat <- res$mvpp_list
+  obs <- res$obs
+  rm(res)
+
+  days <- dim(dat$ens)[1]
+  m <- dim(dat$ens)[2]
+
+  plotTheme <- theme(
+    axis.text = element_text(size = 7),
+    axis.title = element_text(size = 18, face = "bold"),
+    plot.title = element_text(size = 22, hjust = 0.5)
+  )
+
+  # Save settings
+  # Create and save the Multivariate histogram plots
+  plot_folder <- paste0("Data/Plots/Group ", groupNR, "/Rank Histograms/")
+  dir.create(file.path(plot_folder), showWarnings = FALSE)
   plot_vec <- c()
-  plot_vec2 <- c()
-  for (model in names(dat)) {
-    if (model != "emos.q" & model != "GOF") {
-      p <- mvr.histogram(modelName = model, histType = histType)
-      plot_vec <- c(plot_vec, list(p))
-      savePlots(paste0(histType,"/MV_HIST_group_", groupNR, "_", model,"_multivariate.png"), p)
-      
-      if (model %in% c("ens", "Clayton", "Frank", "Gumbel")) {
-        plot_vec2 <- c(plot_vec2, list(p))
+  plotWidth <- 8
+  plotHeight <- 8
+  resolution <- 250
+
+
+  # mvtypes <- c("multivariate", "average", "bandDepth", "tree")
+  mvtypes <- c("multivariate")
+
+  for (histType in mvtypes) {
+    savePath <- paste0(plot_folder, histType, "/")
+    dir.create(file.path(savePath), showWarnings = FALSE)
+    plotWidth <- 8
+    plotHeight <- 8
+    plot_vec <- c()
+    plot_vec2 <- c()
+    for (model in names(dat)) {
+      if (model != "emos.q" && model != "GOF") {
+        print(paste0("Creating histogram for ", model))
+        p <- mvr.histogram(modelName = model, histType = histType)
+        plot_vec <- c(plot_vec, list(p))
+        savePlots(plot_folder, paste0(histType, "/MV_HIST_group_", groupNR, "_", model, "_multivariate.png"), p, plotWidth, plotHeight)
+
+        if (model %in% c("ens", "Clayton", "Frank", "Gumbel")) {
+          plot_vec2 <- c(plot_vec2, list(p))
+        }
       }
     }
-    
+
+    cols <- 6
+    rows <- 2
+
+
+    plotWidth <- 5 * cols
+    plotHeight <- 5 * rows
+    savePlots(plot_folder, paste0(histType, "/MV_HIST_group_", groupNR, "_grid_", histType, ".png"), ggarrange(plotlist = plot_vec, nrow = rows, ncol = cols), plotWidth, plotHeight)
+
+    cols <- 2
+    rows <- 2
+
+
+    plotWidth <- 5 * cols
+    plotHeight <- 5 * rows
+    savePlots(plot_folder, paste0(histType, "/MV_HIST_group_", groupNR, "_Special_", histType, ".png"), ggarrange(plotlist = plot_vec2, nrow = rows, ncol = cols), plotWidth, plotHeight)
   }
-  
-  cols <- 6
-  rows <- 2
-  
-  
-  plotWidth <-  5 * cols
-  plotHeight <- 5 * rows
-  savePlots(paste0(histType,"/MV_HIST_group_", groupNR, "_grid_", histType, ".png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
-  
-  cols <- 2
-  rows <- 2
-  
-  
-  plotWidth <-  5 * cols
-  plotHeight <- 5 * rows
-  savePlots(paste0(histType,"/MV_HIST_group_", groupNR, "_Special_", histType, ".png"),ggarrange(plotlist = plot_vec2,nrow = rows,ncol = cols))
 }
 
-# # uv
-# for (dd in 1:dim(dat$ens)[3]) {
-#   savePath <- paste0(plot_folder, "uv_d=",dd,"/")
-#   dir.create(file.path(savePath), showWarnings = FALSE)
-#   plotWidth <-  8
-#   plotHeight <- 8
-#   plot_vec <- c()
-#   plot_vec2 <- c()
-#   for (model in names(dat)) {
-#     if (model != "emos.q" & model != "GOF") {
-#       p <- mvr.histogram(modelName = model, histType = "uv", d = dd)
-#       plot_vec <- c(plot_vec, list(p))
-#       savePlots(paste0("uv_d=",dd,"/UV_HIST_", groupNR, "_", model,"_univariate_d=",dd,".png"), p)
-#       if (model %in% c("ens", "Clayton", "Frank", "Gumbel")) {
-#         plot_vec2 <- c(plot_vec2, list(p))
-#       }
-#     }
-#   }
-# 
-#   cols <- 6
-#   rows <- 2
-# 
-# 
-#   plotWidth <-  5 * cols
-#   plotHeight <- 5 * rows
-#   savePlots(paste0("uv_d=",dd,"/UV_HIST_group_", groupNR, "_grid_univariate_d=",dd, ".png"),ggarrange(plotlist = plot_vec,nrow = rows,ncol = cols))
-#   
-#   cols <- 2
-#   rows <- 2
-#   
-#   
-#   plotWidth <-  5 * cols
-#   plotHeight <- 5 * rows
-#   savePlots(paste0("uv_d=",dd,"/UV_HIST_group_", groupNR, "_Special_univariate_d=",dd,"_type=", histType, ".png"),ggarrange(plotlist = plot_vec2,nrow = rows,ncol = cols))
-# }
+for (groupNR in 1:5)
+{
+  print(paste0("Starting with group ", groupNR))
+  print("")
+  create_mv_plots(groupNR)
+  print("")
+}

@@ -23,7 +23,7 @@ training_days_method <- "last_m_days"
 compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
 
   for (groupNR in 1:5) {
-    benchmark <- "ssh.h"
+    benchmark <- "ssh.i"
     
     
     fName <- paste0("Res_group_", groupNR)
@@ -32,7 +32,9 @@ compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
       fName <- paste0(training_days_method, "_", fName)
     }
     
-    fName <- paste0("m_", timeWindow, "_", fName)
+    if (timeWindow != 0) {
+      fName <- paste0("m_", timeWindow, "_", fName)
+    }
     
     load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
     
@@ -45,6 +47,7 @@ compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
     input_models <- input_models[! input_models %in% c(benchmark, "ens","emos.q","ecc.q","ecc.s","decc.q")]
     input_scores <- names(res)
     input_scores <- input_scores[!input_scores %in% c("param_list", "indep_list", "tau", "timing_list", "chosenCopula_list", "obs", "mvpp_list")]
+    input_scores <- c(input_scores, "crps_1", "crps_2", "crps_3")
     
     dfmc <- expand.grid(input_models, input_scores, NA)
     names(dfmc) <- c("model", "score", "value")
@@ -58,8 +61,21 @@ compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
         # deal with CRPS specifically (use only first dimension, not all 5 recorded ones)
         
         # print(paste0("( ", this_model, " , ", this_score, ")"))
-        
-        if(this_score == "crps_list"){
+        if(this_score %in% c("crps_1", "crps_2", "crps_3")){
+          
+          n <- as.numeric(gsub("[^0-9]", "", this_score))
+          
+          tmp <- NA
+          tryDM <- try(tmp_DM <- dm.test(e1 = res[["crps_list"]][[this_model]][, n],
+                                         e2 = res[["crps_list"]][[benchmark]][, n],
+                                         h = 1, power = 1), silent = FALSE)
+          if(class(tryDM) != "try-error"){
+            tmp <- tmp_DM$statistic
+          } else{
+            tmp <- 0
+          }
+          dm_teststat_vec <- tmp
+        }else if(this_score == "crps_list"){
     
           tmp <- NA
           tryDM <- try(tmp_DM <- dm.test(e1 = res[[this_score]][[this_model]],
@@ -99,7 +115,9 @@ compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
       savename <- paste0(training_days_method, "_", savename)
     }
     
+    if (timeWindow != 0) {
     savename <- paste0("m_", timeWindow, "_", savename)
+    }
   
     save(dfmc, file = paste0(savedir, savename))
   }
@@ -116,3 +134,6 @@ for (fix_training_days in c(TRUE, FALSE)) {
     compute_dm(100, fix_training_days, training_days_method)
   }
 }
+
+# Standard time window of 50
+compute_dm(0, FALSE, training_days_method)

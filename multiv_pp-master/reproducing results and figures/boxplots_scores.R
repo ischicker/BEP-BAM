@@ -26,7 +26,9 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
       fName <- paste0(training_days_method, "_", fName)
     }
     
-    fName <- paste0("m_", timeWindow, "_", fName)
+    if (timeWindow != 0) {
+      fName <- paste0("m_", timeWindow, "_", fName)
+    }
     
     load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
     
@@ -34,7 +36,7 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
     
     
     input_models <- c("ssh.h", "ssh.i", "gca", "gca.cop", "Clayton","Frank","Gumbel","Surv_Gumbel")
-    input_scores <- c("es_list","vs1_list","vs1w_list","vs0_list","vs0w_list")
+    input_scores <- c("es_list","vs1_list","vs1w_list","vs0_list","vs0w_list", "crps_list", "crps_1", "crps_2", "crps_3")
     
     
     
@@ -72,7 +74,12 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
       
       
       for (input_name in input_models) {
-        val <- c(res[[this_score]][[input_name]])
+        if(this_score %in% c("crps_1", "crps_2", "crps_3")){
+          n <- as.numeric(gsub("[^0-9]", "", this_score))
+          val <- c(res[["crps_list"]][[input_name]][,n])
+        } else {
+          val <- c(res[[this_score]][[input_name]])
+        }
         newdf <- data.frame(input = input_name, value = val)
         dfplot <- rbind(dfplot, newdf)
       }
@@ -101,7 +108,11 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
       plotWidth <- 9
       plotHeight <- 6
       resolution <- 400
-      fileName <- paste0("m_", timeWindow, "_scores_", this_score, "_group_", groupNR, ".png")
+      fileName <- paste0("scores_", this_score, "_group_", groupNR, ".png")
+      
+      if (timeWindow != 0) {
+        fileName <- paste0("m_", timeWindow, "_", fileName)
+      }
       
       ggsave(
         paste0(plot_folder, fileName),
@@ -127,3 +138,5 @@ for (fix_training_days in c(TRUE, FALSE)) {
     plot_boxplots(100, fix_training_days, training_days_method)
   }
 }
+
+plot_boxplots(0, FALSE, training_days_method)

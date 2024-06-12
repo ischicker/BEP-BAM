@@ -1,7 +1,9 @@
 groupNR <- 1
 fix_training_days <- TRUE
-training_days_method <- "random_2w_interval" #"random_past" # "random_2w_interval" # "last_m_days"
-timeWindow <- 0
+training_days_method <- "last_m_days" #"random_past" # "random_2w_interval" # "last_m_days"
+timeWindow <- 100
+
+# NOTE: Observations are multiples of 0.05
     
 fName <- paste0("Res_group_", groupNR)
 
