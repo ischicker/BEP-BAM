@@ -3,19 +3,6 @@
 
 # rm(list=ls())
 
-library("here")
-here2 <- function() {
-  args <- commandArgs(trailingOnly = FALSE)
-  if ("RStudio" %in% args) {
-    dirname(rstudioapi::getActiveDocumentContext()$path)
-  } else {
-    file_arg <- "--file="
-    filepath <- sub(file_arg, "", grep(file_arg, args, value = TRUE))
-    dirname(filepath)
-  }
-}
-
-setwd(here2())
 
 fix_training_days <- FALSE
 training_days_method <- "last_m_days"
@@ -32,11 +19,9 @@ compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
       fName <- paste0(training_days_method, "_", fName)
     }
     
-    if (timeWindow != 0) {
-      fName <- paste0("m_", timeWindow, "_", fName)
-    }
+    fName <- paste0("m_", timeWindow, "_", fName)
     
-    load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
+    load(paste0("Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
     
     print(fName)
     
@@ -108,32 +93,32 @@ compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
       }
     }
     
-    savedir <- paste0("../Data/TestStatistic/")
+    savedir <- paste0("Data/TestStatistic/")
     savename <- paste0("TestStatistic_data_group",groupNR, ".Rdata")
     
     if (fix_training_days) {
       savename <- paste0(training_days_method, "_", savename)
     }
     
-    if (timeWindow != 0) {
+
     savename <- paste0("m_", timeWindow, "_", savename)
-    }
+
   
     save(dfmc, file = paste0(savedir, savename))
   }
 }
 
-for (fix_training_days in c(TRUE, FALSE)) {
-  if (fix_training_days) {
-    for (training_days_method in c("random_past", "last_m_days", "random_2w_interval")) {
-      
-      compute_dm(100, fix_training_days, training_days_method)
-      
-    }
-  } else {
-    compute_dm(100, fix_training_days, training_days_method)
-  }
-}
+# for (fix_training_days in c(TRUE, FALSE)) {
+#   if (fix_training_days) {
+#     for (training_days_method in c("random_past", "last_m_days", "random_2w_interval")) {
+#       
+#       compute_dm(100, fix_training_days, training_days_method)
+#       
+#     }
+#   } else {
+#     compute_dm(100, fix_training_days, training_days_method)
+#   }
+# }
 
 # Standard time window of 50
-compute_dm(0, FALSE, training_days_method)
+compute_dm(50, FALSE, training_days_method)

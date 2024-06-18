@@ -1,20 +1,6 @@
 #rm(list=ls())
 
 library(ggplot2)
-library("here")
-
-here2 <- function() {
-  args <- commandArgs(trailingOnly = FALSE)
-  if ("RStudio" %in% args) {
-    dirname(rstudioapi::getActiveDocumentContext()$path)
-  } else {
-    file_arg <- "--file="
-    filepath <- sub(file_arg, "", grep(file_arg, args, value = TRUE))
-    dirname(filepath)
-  }
-}
-
-setwd(here2())
 
 plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
   
@@ -30,17 +16,13 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
       fName <- paste0("m_", timeWindow, "_", fName)
     }
     
-    load(paste0("../Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
+    load(paste0("Data/Rdata_LAEF/", fName, ".Rdata")) # loads data in "res" variable
     
     print(fName)
     
     
-    input_models <- c("ssh.h", "ssh.i", "gca", "gca.cop", "Clayton","Frank","Gumbel","Surv_Gumbel")
-    input_scores <- c("es_list","vs1_list","vs1w_list","vs0_list","vs0w_list", "crps_list", "crps_1", "crps_2", "crps_3")
     
-    
-    
-    plot_folder <- paste0("../Data/Plots/Group ",groupNR,"/")
+    plot_folder <- paste0("Data/Plots/Group ",groupNR,"/")
     
     if (fix_training_days) {
       plot_folder <- paste0(plot_folder, training_days_method, "/")
@@ -49,20 +31,35 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
     dir.create(file.path(plot_folder), showWarnings = FALSE)
     
 
-    mypal <- colorspace::rainbow_hcl(8)
-    mypal_use <- c("ssh.h" = mypal[1],
-                   "ssh.i" = mypal[2],
-                   "gca" = mypal[3],
-                   "gca.cop" = mypal[4],
-                   "Clayton" = mypal[5],
-                   "Frank" = mypal[6],
-                   "Gumbel" = mypal[7],
-                   "Surv_Gumbel" = mypal[8])
+    mypal <- colorspace::rainbow_hcl(20)
+    mypal_use <- c(
+      "ssh.h"       	  	= mypal[1],
+      "ssh.i"   	  	  	= mypal[2],
+      "gca" 	  	  	  	= mypal[3],
+      "gca.sh" 	  		  	= mypal[4],
+      "gca.cop" 	  	  	= mypal[5],
+      "gca.cop.sh"  	  	= mypal[6],
+      "Clayton" 	  	  	= mypal[7],
+      "Claytonsh" 		  	= mypal[8],
+      "Frank" 	  		  	= mypal[9],
+      "Franksh" 	  	  	= mypal[10],
+      "Gumbel" 	  		  	= mypal[11],
+      "Gumbelsh" 	 		  	= mypal[12],
+      "Surv_Gumbel" 	  	= mypal[13],
+      "Surv_Gumbelsh" 	  = mypal[14]
+    )
     
     
-    levels <- c("ssh.h", "ssh.i", "gca", "gca.cop", "Clayton","Frank","Gumbel","Surv_Gumbel")
-    model_vec <- c("SSh-H", "SSh-I14", "GCA", "CopGCA", "Clayton", "Frank", "Gumbel", "Surv_Gumbel")
-    model2display_names <- data.frame(model_names=levels , display_names=model_vec)
+    # Map technical model name and human friendly model name
+    levels <- c("ssh.h", "ssh.i", "gca", "gca.sh", "gca.cop", "gca.cop.sh",
+                "Clayton", "Claytonsh", "Frank", "Franksh", "Gumbel", "Gumbelsh", "Surv_Gumbel", "Surv_Gumbelsh")
+    model_vec <- c("SSh-H", "SSh-I14", "GCA", "GCAsh", "CopGCA", "CopGCAsh", 
+                   "Clayton", "ClaytonSh", "Frank", "FrankSh", "Gumbel", "GumbelSh", "Surv_Gumbel", "Surv_GumbelSh")
+    model2display_names <- data.frame(model_names = levels, display_names = model_vec)
+    
+    
+    input_models <- levels
+    input_scores <- c("es_list","vs1_list","vs1w_list","vs0_list","vs0w_list", "crps_list", "crps_1", "crps_2", "crps_3")
     
     
     for (this_score in input_scores) {
@@ -105,7 +102,7 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
         theme(plot.title = element_text(hjust = 0.5))
       
       
-      plotWidth <- 9
+      plotWidth <- 12
       plotHeight <- 6
       resolution <- 400
       fileName <- paste0("scores_", this_score, "_group_", groupNR, ".png")
@@ -127,16 +124,16 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
 }
 
 
-for (fix_training_days in c(TRUE, FALSE)) {
-  if (fix_training_days) {
-    for (training_days_method in c("random_past", "last_m_days", "random_2w_interval")) {
-      
-      plot_boxplots(100, fix_training_days, training_days_method)
-      
-    }
-  } else {
-    plot_boxplots(100, fix_training_days, training_days_method)
-  }
-}
+# for (fix_training_days in c(TRUE, FALSE)) {
+#   if (fix_training_days) {
+#     for (training_days_method in c("random_past", "last_m_days", "random_2w_interval")) {
+#       
+#       plot_boxplots(100, fix_training_days, training_days_method)
+#       
+#     }
+#   } else {
+#     plot_boxplots(100, fix_training_days, training_days_method)
+#   }
+# }
 
-plot_boxplots(0, FALSE, training_days_method)
+plot_boxplots(50, FALSE, training_days_method)

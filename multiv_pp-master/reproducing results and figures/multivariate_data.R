@@ -11,9 +11,7 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
       fName <- paste0(training_days_method, "_", fName)
     }
 
-    if (timeWindow != 0) {
-      fName <- paste0("m_", timeWindow, "_", fName)
-    }
+    fName <- paste0("m_", timeWindow, "_", fName)
 
     print(fName)
 
@@ -26,9 +24,7 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
       savename <- paste0(training_days_method, "_", savename)
     }
 
-    if (timeWindow != 0) {
-      savename <- paste0("m_", timeWindow, "_", savename)
-    }
+    savename <- paste0("m_", timeWindow, "_", savename)
 
     load(paste0(savedir, savename))
 
@@ -56,22 +52,30 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
     # also drop EMOS.Q, GOF, ECC methods and GCA
     df2 <- subset(df1, model != "emos.q" & model != "GOF" & model != "decc.q" & model != "ecc.q" & model != "ecc.s" & model != "ssh")
 
-    mypal <- colorspace::rainbow_hcl(8)
+    mypal <- colorspace::rainbow_hcl(20)
     mypal_use <- c(
-      "ssh.h" = mypal[1],
-      "ssh.i" = mypal[2],
-      "gca" = mypal[3],
-      "gca.cop" = mypal[4],
-      "Clayton" = mypal[5],
-      "Frank" = mypal[6],
-      "Gumbel" = mypal[7],
-      "Surv_Gumbel" = mypal[8]
+      "ssh.h"       	  	= mypal[1],
+      "ssh.i"   	  	  	= mypal[2],
+      "gca" 	  	  	  	= mypal[3],
+      "gca.sh" 	  		  	= mypal[4],
+      "gca.cop" 	  	  	= mypal[5],
+      "gca.cop.sh"  	  	= mypal[6],
+      "Clayton" 	  	  	= mypal[7],
+      "Claytonsh" 		  	= mypal[8],
+      "Frank" 	  		  	= mypal[9],
+      "Franksh" 	  	  	= mypal[10],
+      "Gumbel" 	  		  	= mypal[11],
+      "Gumbelsh" 	 		  	= mypal[12],
+      "Surv_Gumbel" 	  	= mypal[13],
+      "Surv_Gumbelsh" 	  = mypal[14]
     )
 
 
     # Map technical model name and human friendly model name
-    levels <- c("ssh.h", "ssh.i", "gca", "gca.cop", "Clayton", "Frank", "Gumbel", "Surv_Gumbel")
-    model_vec <- c("SSh-H", "SSh-I14", "GCA", "CopGCA", "Clayton", "Frank", "Gumbel", "Surv_Gumbel")
+    levels <- c("ssh.h", "ssh.i", "gca", "gca.sh", "gca.cop", "gca.cop.sh",
+                "Clayton", "Claytonsh", "Frank", "Franksh", "Gumbel", "Gumbelsh", "Surv_Gumbel", "Surv_Gumbelsh")
+    model_vec <- c("SSh-H", "SSh-I14", "GCA", "GCAsh", "CopGCA", "CopGCAsh", 
+                   "Clayton", "ClaytonSh", "Frank", "FrankSh", "Gumbel", "GumbelSh", "Surv_Gumbel", "Surv_GumbelSh")
     model2display_names <- data.frame(model_names = levels, display_names = model_vec)
 
     # Map technical scoring name and human friendly scoring name
@@ -81,7 +85,6 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
 
     # Change representation with model levels
     df2$model <- factor(df2$model, levels = levels)
-
 
     ylimitFunc <- function(val1, val2) {
       return(1.5 * max(abs(val1), abs(val2)))
@@ -108,7 +111,7 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
 
       # X labels
       model_vec <- c()
-      for (model in dfplot$model) {
+      for (model in sort(dfplot$model)) {
         model_vec <- c(model_vec, subset(model2display_names, model_names == model)$display_names)
       }
 
@@ -139,9 +142,11 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
     createAndSave <- function(this_score) {
       # Plot data
       dfplot <- subset(df2, score == this_score)
+      
+      .GlobalEnv$dfplot <- dfplot
 
       # Plot size
-      plotWidth <- 9
+      plotWidth <- 12
       plotHeight <- 6
 
       # Get the plots
@@ -177,4 +182,4 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
 #   }
 # }
 
-plot_dm_scores(0, FALSE, training_days_method)
+plot_dm_scores(50, FALSE, training_days_method)

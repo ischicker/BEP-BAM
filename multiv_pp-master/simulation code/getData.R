@@ -1,4 +1,3 @@
-library("here")
 
 getData <- function() {
   
@@ -20,10 +19,10 @@ getData <- function() {
   fName2016 <- "INPUT-DATA_temp_2016040100-2018050100"
   
   # Load data separately
-  load(paste0("../../Data/", fName2013, ".Rdata")) # loads data in "input" variable
+  load(paste0("../Data/", fName2013, ".Rdata")) # loads data in "input" variable
   dat2013 <- input; rm(input)
   
-  load(paste0("../../Data/", fName2016, ".Rdata")) # loads data in "input" variable
+  load(paste0("../Data/", fName2016, ".Rdata")) # loads data in "input" variable
   dat2016 <- input; rm(input)
   
   # Focus on one specific lead time
