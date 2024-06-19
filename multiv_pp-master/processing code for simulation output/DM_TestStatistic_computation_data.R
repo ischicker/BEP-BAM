@@ -29,7 +29,8 @@ compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
     library(forecast) # for DM test function
     
     input_models <- names(res$es_list)
-    input_models <- input_models[! input_models %in% c(benchmark, "ens","emos.q","ecc.q","ecc.s","decc.q")]
+    # input_models <- input_models[! input_models %in% c(benchmark, "ens","emos.q","ecc.q","ecc.s","decc.q")]
+    input_models <- input_models[! input_models %in% c(benchmark, "ens","emos.q")]
     input_scores <- names(res)
     input_scores <- input_scores[!input_scores %in% c("param_list", "indep_list", "tau", "timing_list", "chosenCopula_list", "obs", "mvpp_list")]
     input_scores <- c(input_scores, "crps_1", "crps_2", "crps_3")
@@ -121,4 +122,4 @@ compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
 # }
 
 # Standard time window of 50
-compute_dm(50, FALSE, training_days_method)
+compute_dm(17, FALSE, training_days_method)

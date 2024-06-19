@@ -46,15 +46,20 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
       "Gumbel" 	  		  	= mypal[11],
       "Gumbelsh" 	 		  	= mypal[12],
       "Surv_Gumbel" 	  	= mypal[13],
-      "Surv_Gumbelsh" 	  = mypal[14]
+      "Surv_Gumbelsh" 	  = mypal[14],
+      "decc.q"            = mypal[15],
+      "ecc.q"             = mypal[16],
+      "ecc.s"             = mypal[17]
     )
     
     
     # Map technical model name and human friendly model name
     levels <- c("ssh.h", "ssh.i", "gca", "gca.sh", "gca.cop", "gca.cop.sh",
-                "Clayton", "Claytonsh", "Frank", "Franksh", "Gumbel", "Gumbelsh", "Surv_Gumbel", "Surv_Gumbelsh")
+                "Clayton", "Claytonsh", "Frank", "Franksh", "Gumbel", "Gumbelsh",
+                "Surv_Gumbel", "Surv_Gumbelsh", "decc.q", "ecc.q", "ecc.s")
     model_vec <- c("SSh-H", "SSh-I14", "GCA", "GCAsh", "CopGCA", "CopGCAsh", 
-                   "Clayton", "ClaytonSh", "Frank", "FrankSh", "Gumbel", "GumbelSh", "Surv_Gumbel", "Surv_GumbelSh")
+                   "Clayton", "ClaytonSh", "Frank", "FrankSh", "Gumbel", "GumbelSh", 
+                   "Surv_Gumbel", "Surv_GumbelSh", "dECC-Q", "ECC-Q", "ECC-S")
     model2display_names <- data.frame(model_names = levels, display_names = model_vec)
     
     
@@ -136,4 +141,4 @@ plot_boxplots <-function(timeWindow, fix_training_days, training_days_method) {
 #   }
 # }
 
-plot_boxplots(50, FALSE, training_days_method)
+plot_boxplots(17, FALSE, training_days_method)

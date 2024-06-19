@@ -454,4 +454,4 @@ trainingDays <- 365
 # }
 
 
-compute_res(trainingDays, 50, FALSE, training_days_method)
+compute_res(trainingDays, 17, FALSE, training_days_method)

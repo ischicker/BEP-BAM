@@ -191,7 +191,7 @@ create_mv_plots <- function(groupNR, timeWindow) {
         print(paste0("Creating histogram for ", model))
         p <- mvr.histogram(dat, obs, days, modelName = model, histType = histType)
         plot_vec <- c(plot_vec, list(p))
-        savePlots(plot_folder, paste0(histType, "/MV_HIST_group_", groupNR, "_", model, "_multivariate.png"), 
+        savePlots(plot_folder, paste0(histType, "/m_", timeWindow, "_MV_HIST_group_", groupNR, "_", model, "_multivariate.png"), 
                   p, plotWidth, plotHeight, resolution)
 
         if (model %in% c("ens", "Clayton", "Frank", "Gumbel")) {
@@ -206,7 +206,7 @@ create_mv_plots <- function(groupNR, timeWindow) {
 
     plotWidth <- 5 * cols
     plotHeight <- 5 * rows
-    savePlots(plot_folder, paste0(histType, "/MV_HIST_group_", groupNR, "_grid_", histType, ".png"), 
+    savePlots(plot_folder, paste0(histType, "/m_", timeWindow, "_MV_HIST_group_", groupNR, "_grid_", histType, ".png"), 
               ggarrange(plotlist = plot_vec, nrow = rows, ncol = cols), plotWidth, plotHeight, resolution)
 
     cols <- 2
@@ -215,7 +215,7 @@ create_mv_plots <- function(groupNR, timeWindow) {
 
     plotWidth <- 5 * cols
     plotHeight <- 5 * rows
-    savePlots(plot_folder, paste0(histType, "/MV_HIST_group_", groupNR, "_Special_", histType, ".png"), 
+    savePlots(plot_folder, paste0(histType, "/m_", timeWindow, "_MV_HIST_group_", groupNR, "_Special_", histType, ".png"), 
               ggarrange(plotlist = plot_vec2, nrow = rows, ncol = cols), plotWidth, plotHeight, resolution)
   }
 }
