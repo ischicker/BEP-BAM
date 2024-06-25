@@ -122,4 +122,4 @@ compute_dm <-function(timeWindow, fix_training_days, training_days_method) {
 # }
 
 # Standard time window of 50
-compute_dm(17, FALSE, training_days_method)
+compute_dm(50, FALSE, training_days_method)

@@ -46,21 +46,23 @@
 # Sample run:
 
 # Source all files
-# setwd("C:/Users/20192042/OneDrive - TU Eindhoven/Courses/BEP - BAM/Code/multiv_pp-master/simulation code")
-# dir <- "./sourceArchimedean/"
+# dir <- "simulation code/sourceArchimedean/"
 # source(paste0(dir, "generate_observations_arch.R"))
 # source(paste0(dir, "generate_ensfc_arch.R"))
 # source(paste0(dir, "postprocess_ensfc_arch.R"))
 # source(paste0(dir, "mvpp_arch.R"))
 # source(paste0(dir, "evaluation_functions_arch.R"))
-#
+# 
 # obs <- generate_obs(model = 1, nout = 10, ninit = 5, d = 3, theta0 = 5, theta = 10, copula = "Frank")
 # fc <- generate_ensfc(model = 1, nout = 10, ninit = 5, nmembers = 5, d = 3, theta0 = 5, theta = 10, copula = "Frank")
 # pp_out <- postproc(fcmodel = 1, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
 #                    obs = obs$obs, obs_init = obs$obs_init,
 #                    train = "init", trainlength = NULL, emos_plus = TRUE)
-# mvd <- mvpp(method = "Frank", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
+# mvd <- mvpp(method = "SimSchaake", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
 #             obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out)
+
+
+source("simulation code/similarity_criterion.R")
 
 psurv_norm <- function(x, mean = 0, sd = 1) {
   return(1 - pnorm(x, mean = mean, sd = sd))
@@ -224,6 +226,61 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       obs_IDs <- sample(x = 1:(dim(obs_init)[1] + nn - 1), size = m, replace = FALSE)
       for (dd in 1:d) {
         obs_tmp <- obs_all[obs_IDs, dd]
+        mvppout[nn, , dd] <- EMOS_sample[nn, , dd][rank(obs_tmp, ties.method = "random")]
+      }
+    }
+    # end of SSh code
+  }
+  
+  # Schaake shuffle code
+  if (method == "SimSchaake-I") {
+    # if no EMOS_sample to base SSh on is given, recursively call 'mvpp' to generate such a sample
+    if (is.null(EMOS_sample)) {
+      if (is.null(variant)) {
+        stop("if no 'EMOS_sample' is given, 'variant' has to be specified to generate a new one")
+      }
+      EMOS_sample <- mvpp(
+        method = "EMOS", variant = variant, postproc_out = postproc_out,
+        ensfc = ensfc, ensfc_init = ensfc_init,
+        obs = obs, obs_init = obs_init, ecc_m = ecc_m
+      )
+      message("no 'EMOS_sample' given for SSh, a new one is generated")
+    } else if (!is.null(variant)) {
+      message("'variant' parameter has no influence if EMOS_sample is supplied,
+              make sure the EMOS_sample is produced with the desired variant")
+    }
+    
+    # concatenate obs_init and obs arrays to sample from available forecast cases later on
+    obs_all <- rbind(obs_init, obs)
+    
+    # Compute all pairwise similarity scores
+    sim_vectorized <- Vectorize(function(i, j) Sim(i, j, uvpp, ensfc))
+    
+    # reorder post-processed forecast sample according to past observations
+    for (nn in 1:n) {
+      # choose set of past forecast cases to determine dependence template
+      #   ... this way, a new set of IDs is drawn for every forecast instance
+      #   ... this needs to depend on nn in a more suitable manner if there is temporal change in the simulation setup
+      
+      # Days to consider
+      possible_days <- getIntervals(nn, 1, dim(obs_all)[1], 28)
+      
+      # Compute similarity scores
+      sim_values <- sim_vectorized(rep(nn, length(possible_days)), possible_days)
+      
+      # Retrieve the m most similar days
+      sorted_indices <- order(sim_values)
+      lowest_values <- possible_days[sorted_indices]
+      lowest_values <- lowest_values[lowest_values != nn]
+      obs_IDs <- lowest_values[1:m]
+      
+      for (dd in 1:d) {
+        # print(obs_IDs)
+        # print(length(obs_IDs))
+        obs_tmp <- obs_all[obs_IDs, dd]
+        # print(length(mvppout[nn, , dd]))
+        # print(obs_tmp)
+        # print(length(rank(obs_tmp, ties.method = "random")))
         mvppout[nn, , dd] <- EMOS_sample[nn, , dd][rank(obs_tmp, ties.method = "random")]
       }
     }

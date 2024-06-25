@@ -53,7 +53,7 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, timeWindow,
   
   
   # generate objects to save scores to
-  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh.h", "ssh.i", 
+  modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh.h", "ssh.i", "sim.ssh",
                   "gca", "gca.sh", "gca.cop", "gca.cop.sh", "Clayton", "Frank", "Gumbel", "Surv_Gumbel",
                   "Claytonsh", "Franksh", "Gumbelsh", "Surv_Gumbelsh")
   
@@ -293,6 +293,22 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, timeWindow,
   }
     
   add_scores(ssh.i$mvppout, "ssh.i", start_time)
+  
+  ##################
+  ## SimSchaake-I ##
+  ##################
+  
+  print("SimSchaake-I")
+  
+  start_time <- Sys.time()
+  
+  sim.ssh <- mvpp(method = "SimSchaake-I", ensfc = ensfc, ensfc_init = ensfc_init,
+                  obs = score.env$obs, obs_init = obs_init, postproc_out = pp_out, uvpp = uvpp,
+                  EMOS_sample = emos.q$mvppout, timeWindow = timeWindow, ecc_m = ecc_m)
+  
+  .GlobalEnv$sim.ssh <- sim.ssh
+
+  add_scores(sim.ssh$mvppout, "sim.ssh", start_time)
 
   #########
   ## GCA ##
@@ -454,4 +470,4 @@ trainingDays <- 365
 # }
 
 
-compute_res(trainingDays, 17, FALSE, training_days_method)
+compute_res(trainingDays, 50, FALSE, training_days_method)

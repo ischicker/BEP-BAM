@@ -3,6 +3,12 @@
 library(ggplot2)
 library(gridExtra)
 
+getSkillscores <- function(lst, ref) {
+  refval <- lst[[ref]]
+  for (i in names(lst)) lst[[i]] <- (1 - lst[[i]] / refval) * 100
+  return(lst)
+}
+
 plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) {
   for (groupNR in 1:5) {
     fName <- paste0("Res_group_", groupNR)
@@ -57,6 +63,7 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
     mypal_use <- c(
       "ssh.h"       	  	= mypal[1],
       "ssh.i"   	  	  	= mypal[2],
+      "sim.ssh"           = mypal[18],
       "gca" 	  	  	  	= mypal[3],
       "gca.sh" 	  		  	= mypal[4],
       "gca.cop" 	  	  	= mypal[5],
@@ -76,10 +83,10 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
 
 
     # Map technical model name and human friendly model name
-    levels <- c("ssh.h", "ssh.i", "gca", "gca.sh", "gca.cop", "gca.cop.sh",
+    levels <- c("ssh.h", "ssh.i", "sim.ssh", "gca", "gca.sh", "gca.cop", "gca.cop.sh",
                 "Clayton", "Claytonsh", "Frank", "Franksh", "Gumbel", "Gumbelsh",
                 "Surv_Gumbel", "Surv_Gumbelsh", "decc.q", "ecc.q", "ecc.s")
-    model_vec <- c("SSh-H", "SSh-I14", "GCA", "GCAsh", "CopGCA", "CopGCAsh", 
+    model_vec <- c("SSh-H", "SSh-I14", "SimSchaake-I", "GCA", "GCAsh", "CopGCA", "CopGCAsh", 
                    "Clayton", "ClaytonSh", "Frank", "FrankSh", "Gumbel", "GumbelSh", 
                    "Surv_Gumbel", "Surv_GumbelSh", "dECC-Q", "ECC-Q", "ECC-S")
     model2display_names <- data.frame(model_names = levels, display_names = model_vec)
@@ -145,12 +152,22 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
 
 
 
-    createAndSave <- function(this_score) {
+    skillScore <- function(this_score) {
       # Plot data
-      dfplot <- subset(df2, score == this_score)
-      
-      .GlobalEnv$dfplot <- dfplot
+      lst <- getSkillscores(lapply(res[[this_score]], mean), "ssh.h")
+      n <- length(lst)
 
+      dfplot <- data.frame(
+        model = names(lst),
+        score = rep(this_score, n),
+        value = unlist(lst)
+        )
+      
+      dfplot <- subset(dfplot, model != "emos.q" & model != "GOF" & model != "ens")
+      
+      dfplot$model <- factor(dfplot$model, levels = levels)
+      # print(dfplot)
+      .GlobalEnv$dfplot <- dfplot
       # Plot size
       plotWidth <- 12
       plotHeight <- 6
@@ -163,9 +180,34 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
       saveName <- paste0(subset(score2display_score, score_names == score)$display_names, "_group_", groupNR, ".png")
 
       if (timeWindow != 0) {
-        saveName <- paste0("m_", timeWindow, "_", saveName)
+        saveName <- paste0("m_", timeWindow, "_SkillScore_", saveName)
       }
 
+      # Save the plot
+      saveFigure(saveName, p1, plotWidth, plotHeight)
+    }
+    
+    createAndSave <- function(this_score) {
+      # Plot data
+      dfplot <- subset(df2, score == this_score)
+      
+      .GlobalEnv$dfplot <- dfplot
+      
+      # Plot size
+      plotWidth <- 12
+      plotHeight <- 6
+      
+      # Get the plots
+      p1 <- plotScores(dfplot, this_score)
+      
+      
+      # Save the plots individually
+      saveName <- paste0(subset(score2display_score, score_names == score)$display_names, "_group_", groupNR, ".png")
+      
+      if (timeWindow != 0) {
+        saveName <- paste0("m_", timeWindow, "_", saveName)
+      }
+      
       # Save the plot
       saveFigure(saveName, p1, plotWidth, plotHeight)
     }
@@ -174,6 +216,10 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
     for (score in scores)
     {
       createAndSave(score)
+    }
+    
+    for (score in c("es_list", "vs0_list")) {
+      skillScore(score)
     }
   }
 }
@@ -188,4 +234,4 @@ plot_dm_scores <- function(timeWindow, fix_training_days, training_days_method) 
 #   }
 # }
 
-plot_dm_scores(17, FALSE, training_days_method)
+plot_dm_scores(50, FALSE, training_days_method)
