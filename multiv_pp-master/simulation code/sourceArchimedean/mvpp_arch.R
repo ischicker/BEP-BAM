@@ -100,7 +100,7 @@ getIntervals <- function(day, minRange, maxRange, interval_length) {
 
 
 library(copula)
-mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, EMOS_sample = NULL, ECC_out = NULL, timeWindow, ecc_m, uvpp = NULL) {
+mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postproc_out, sim_matrix = NULL, EMOS_sample = NULL, ECC_out = NULL, timeWindow, ecc_m, uvpp = NULL) {
   set.seed(2024)
 
   # include some checks for inputs
@@ -233,7 +233,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
   }
   
   # Schaake shuffle code
-  if (method == "SimSchaake-I") {
+  if (method == "SimSchaake") {
     # if no EMOS_sample to base SSh on is given, recursively call 'mvpp' to generate such a sample
     if (is.null(EMOS_sample)) {
       if (is.null(variant)) {
@@ -253,24 +253,18 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
     # concatenate obs_init and obs arrays to sample from available forecast cases later on
     obs_all <- rbind(obs_init, obs)
     
-    # Compute all pairwise similarity scores
-    sim_vectorized <- Vectorize(function(i, j) Sim(i, j, uvpp, ensfc))
-    
     # reorder post-processed forecast sample according to past observations
     for (nn in 1:n) {
       # choose set of past forecast cases to determine dependence template
       #   ... this way, a new set of IDs is drawn for every forecast instance
       #   ... this needs to depend on nn in a more suitable manner if there is temporal change in the simulation setup
       
-      # Days to consider
-      possible_days <- getIntervals(nn, 1, dim(obs_all)[1], 28)
-      
-      # Compute similarity scores
-      sim_values <- sim_vectorized(rep(nn, length(possible_days)), possible_days)
+      # Retrieve similarity scores
+      sim_values <- sim_matrix[nn, ]
       
       # Retrieve the m most similar days
       sorted_indices <- order(sim_values)
-      lowest_values <- possible_days[sorted_indices]
+      lowest_values <- (1:n)[sorted_indices]
       lowest_values <- lowest_values[lowest_values != nn]
       obs_IDs <- lowest_values[1:m]
       
@@ -373,6 +367,7 @@ mvpp <- function(method, variant = NULL, ensfc, ensfc_init, obs, obs_init, postp
       # Make sure to get numeric values
 
       # Dependence structure by Copula
+      # TODO: Use correlation matrix
       mvsample <- mvrnorm(n = m, mu = rep(0, d), Sigma = cov_obs)
 
       # impose dependence structure on post-processed forecasts

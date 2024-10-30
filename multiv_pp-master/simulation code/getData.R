@@ -124,3 +124,22 @@ getData <- function() {
   
   .GlobalEnv$data <- data
 }
+
+storeInputData <- function() {
+  
+  if (!("data1" %in% names(.GlobalEnv))) {
+    getData()
+  }
+  
+  for (groupNr in 1:5) {
+    savename <- paste0("Data/Input/data", groupNr, ".Rdata")
+    datavar <- .GlobalEnv[[paste0("data", groupNr)]]
+    save(datavar, file = savename)
+  }
+  
+  savename <- paste0("Data/Input/data.Rdata")
+  datavar <- .GlobalEnv[["data"]]
+  save(datavar, file = savename)
+}
+
+

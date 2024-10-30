@@ -18,9 +18,18 @@ source("simulation code/ECC_T2M_Emos_subfunctions.R")
 
 
 # Load data
-source("simulation code/getData.R")
-if (!("data1" %in% names(.GlobalEnv))) {
-  getData()
+for (groupNr in 1:5) {
+  x <- load(paste0("Data/Input/data", groupNr, ".Rdata"))
+  assign(paste0("data", groupNr), get(x))
+  rm(list = x, envir = .GlobalEnv)
+  
+  x <- load(paste0("Data/UVPP/uvpp", groupNr, ".Rdata"))
+  assign(paste0("uvpp", groupNr), get(x))
+  rm(list = x, envir = .GlobalEnv)
+  
+  x <- load(paste0("Data/SimilarityMatrix/simMatrix", groupNr, ".Rdata"))
+  assign(paste0("simMatrix", groupNr), get(x))
+  rm(list = x, envir = .GlobalEnv)
 }
 
 eval_all_mult <- function(mvpp_out, obs) {
@@ -32,7 +41,7 @@ eval_all_mult <- function(mvpp_out, obs) {
   return(list("es" = esout, "vs1" = vs1out, "vs1w" = vs1wout, "vs0" = vs0out, "vs0w" = vs0wout))
 }
 
-run_processing <- function(data, trainingDays, progress_ind = FALSE, timeWindow, fix_training_days, training_days_method) {
+run_processing <- function(data, uvpp, sim_matrix, trainingDays, progress_ind = FALSE, timeWindow, fix_training_days, training_days_method) {
   
   # Stations and days from the data
   stations <- unique(data$stat)
@@ -110,30 +119,6 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, timeWindow,
       )
     }
   }
-  
-  ##########
-  ## UVPP ## 
-  ##########
-  
-  print("Start UVPP")
-
-  start_time <- Sys.time()
-  uvpp <- list()
-
-  for (station in stations) {
-
-    statIndex <- match(station, stations)
-
-    emos.result <- emos_T2M_mean_singleForecast(subset(data, stat == station), trainingDays)
-    emos.result$stat <- statIndex
-
-    uvpp <- rbind(uvpp, emos.result)
-
-  }
-
-  end_time <- Sys.time()
-
-  score.env$timing_list$uvpp <- end_time - start_time
 
   ##############
   ## Ensemble ##
@@ -294,15 +279,15 @@ run_processing <- function(data, trainingDays, progress_ind = FALSE, timeWindow,
     
   add_scores(ssh.i$mvppout, "ssh.i", start_time)
   
-  ##################
-  ## SimSchaake-I ##
-  ##################
+  ################
+  ## SimSchaake ##
+  ################
   
-  print("SimSchaake-I")
+  print("SimSchaake")
   
   start_time <- Sys.time()
   
-  sim.ssh <- mvpp(method = "SimSchaake-I", ensfc = ensfc, ensfc_init = ensfc_init,
+  sim.ssh <- mvpp(method = "SimSchaake", ensfc = ensfc, ensfc_init = ensfc_init, sim_matrix = sim_matrix,
                   obs = score.env$obs, obs_init = obs_init, postproc_out = pp_out, uvpp = uvpp,
                   EMOS_sample = emos.q$mvppout, timeWindow = timeWindow, ecc_m = ecc_m)
   
@@ -419,38 +404,38 @@ compute_res <- function(trainingDays, timeWindow, fix_training_days, training_da
   
   print(paste0("Start processing for directory: ", saveDir))
   
-  print("")
-  print("Group 1")
-  print("")
-  res <- run_processing(data1, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
-  savename <- paste0(saveDir, "Res_group_1", ".Rdata")
-  save(res, file = savename)
+  # print("")
+  # print("Group 1")
+  # print("")
+  # res <- run_processing(data1, uvpp1, simMatrix1, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  # savename <- paste0(saveDir, "Res_group_1", ".Rdata")
+  # save(res, file = savename)
   
   print("")
   print("Group 2")
   print("")
-  res <- run_processing(data2, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  res <- run_processing(data2, uvpp2, simMatrix2, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
   savename <- paste0(saveDir, "Res_group_2", ".Rdata")
   save(res, file = savename)
   
   print("")
   print("Group 3")
   print("")
-  res <- run_processing(data3, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  res <- run_processing(data3, uvpp3, simMatrix3, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
   savename <- paste0(saveDir, "Res_group_3", ".Rdata")
   save(res, file = savename)
   
   print("")
   print("Group 4")
   print("")
-  res <- run_processing(data4, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  res <- run_processing(data4, uvpp4, simMatrix4, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
   savename <- paste0(saveDir, "Res_group_4", ".Rdata")
   save(res, file = savename)
   
   print("")
   print("Group 5")
   print("")
-  res <- run_processing(data5, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
+  res <- run_processing(data5, uvpp5, simMatrix5, trainingDays, progress_ind = TRUE, timeWindow, fix_training_days, training_days_method)
   savename <- paste0(saveDir, "Res_group_5", ".Rdata")
   save(res, file = savename)
 }
